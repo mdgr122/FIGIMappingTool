@@ -4,16 +4,18 @@
 #include <iostream>
 #include <Windows.h>
 #include "Request.h"
-#include "AppWindow.h"
+#include "states/WindowState.h"
+#include "states/FileState.h"
 
 
 int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ PWSTR pCmdLine, _In_ int nCmdShow)
 {
+    
     // Create an instance of the window class. This handles all the setup and window creation.
-    AppWindow appWindow(hInstance, nCmdShow);
+    WindowState window_state(hInstance, nCmdShow);
 
     // Run the message loop and return the application's exit code.
-    return appWindow.RunMsgLoop();
+    return window_state.RunMsgLoop();
 }
 //
 //int main()

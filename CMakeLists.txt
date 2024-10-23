@@ -19,9 +19,10 @@ add_executable (
 	"OpenFIGI/main.cpp"  
 	"OpenFIGI/Request.h"
 	"OpenFIGI/Request.cpp"
-	"OpenFIGI/AppWindow.h"
-	"OpenFIGI/AppWindow.cpp"
-)
+	"OpenFIGI/states/WindowState.h"
+	"OpenFIGI/states/WindowState.cpp"
+	"OpenFIGI/states/FileState.h" 
+	"OpenFIGI/states/FileState.cpp")
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET OpenFIGI PROPERTY CXX_STANDARD 20)
