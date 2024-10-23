@@ -1,5 +1,6 @@
 #include "WindowState.h"
 #include <iostream>
+#include <string>
 
 // Define the window class name and window title at the top for consistency
 const wchar_t CLASS_NAME[] = L"OpenFIGILookup";
@@ -11,7 +12,7 @@ WindowState::WindowState(HINSTANCE hInstance, int nCmdShow)
     , nCmdShow(nCmdShow)
     , nWidth{}
     , nHeight{}
-    , file_state{hwnd}
+    , open_path{}
 {
     nWidth = GetSystemMetrics(SM_CXSCREEN);
     nHeight = GetSystemMetrics(SM_CYSCREEN);
@@ -29,7 +30,9 @@ WindowState::WindowState(HINSTANCE hInstance, int nCmdShow)
     }
 
     if (hwnd != NULL)
+    {
         ShowWindow(hwnd, nCmdShow);
+    }
 
 }
 
@@ -106,6 +109,9 @@ bool WindowState::CreateMainWindow()
         NULL
     );
 
+    // Store the pointer to the current instance in the HWND
+    SetWindowLongPtr(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));
+
     if (hwnd == NULL)
     {
         std::cerr << "Failed to create the main window! Error: " << GetLastError() << std::endl;
@@ -114,55 +120,56 @@ bool WindowState::CreateMainWindow()
     return true;
 }
 
-HWND WindowState::get_handle()
-{
-    if (!hwnd)
-    {
-        std::cerr << "Failed to get window handle!" << std::endl;
-        return NULL;
-    }
-    return hwnd;
-}
-
 
 // LRESULT - Signed result of message processing.
 // This function matches the signature required by a function pointer of type WNDPROC. 
 // When we assign lpfnWndProc above, the function's address is implicitly converted to a pointer of type WNDPROC.
 LRESULT CALLBACK WindowState::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-    switch (uMsg)
+    // Because LRESULT CALLBACK WindowState::WindowProc is a static function, and the other functions within the WindowState class are non-static, there is an inherent mismatch.
+    // Because of this, callback functions don't have direct access to the WindowState instance and we mus tstore the instance pointer in the window data.
+    // This is done using  SetWindowLongPTR (SetWindowLong on 32bit). The GWLP_USERDATA index is used to store a pointer to the WindowState object in the window's internal data.
+    // The pointer is retrieved with the GetWindowLongPtr which allows the callback function to gain acess to the instance of the class.
+    // Once the instance is retrieved, we can use it to call non-static member functions and access instance-specific data.
+
+    // Retrieve the instance of WindowState from the window's user data
+    WindowState* pThis = reinterpret_cast<WindowState*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
+    if (pThis)
     {
-    case WM_COMMAND:
-        switch (wParam)
+        switch (uMsg)
         {
-        case ID_BUTTON_FILE:
-            MessageBox(hwnd, L"File button clicked!", L"Button Clicked", MB_OK);
-            
-            break;
+        case WM_COMMAND:
+            switch (wParam)
+            {
+            case ID_BUTTON_FILE:
+                pThis->get_open_path(); // Calling non-static member function
+                break;
+            }
+        case WM_DESTROY:
+            PostQuitMessage(0);
+            return 0;
+
+        case WM_PAINT:
+        {
+            PAINTSTRUCT ps;
+
+            // The BeginPaint function fills in the PAINTSTRUCT structure with information on the repaint request. The current update region is given in the rcPaint member of PAINTSTRUCT.
+            HDC hdc = BeginPaint(hwnd, &ps);
+
+            // All painting occurs here, between BeginPaint and EndPaint.
+            // &ps.rcPaint is the coords of the rectangle to fill.
+            FillRect(hdc, &ps.rcPaint, (HBRUSH)(COLOR_WINDOW + 1));
+
+            // The EndPaint function clears the update region, which signals to Windows that the window has completed painting itself.
+            EndPaint(hwnd, &ps);
         }
-    case WM_DESTROY:
-        PostQuitMessage(0);
         return 0;
 
-    case WM_PAINT:
-    {
-        PAINTSTRUCT ps;
-
-        // The BeginPaint function fills in the PAINTSTRUCT structure with information on the repaint request. The current update region is given in the rcPaint member of PAINTSTRUCT.
-        HDC hdc = BeginPaint(hwnd, &ps);
-
-        // All painting occurs here, between BeginPaint and EndPaint.
-        // &ps.rcPaint is the coords of the rectangle to fill.
-        FillRect(hdc, &ps.rcPaint, (HBRUSH)(COLOR_WINDOW + 1));
-
-        // The EndPaint function clears the update region, which signals to Windows that the window has completed painting itself.
-        EndPaint(hwnd, &ps);
+        default:
+            return DefWindowProc(hwnd, uMsg, wParam, lParam);
+        }
     }
-    return 0;
-
-    default:
-        return DefWindowProc(hwnd, uMsg, wParam, lParam);
-    }
+    return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
 int WindowState::RunMsgLoop()
@@ -181,4 +188,13 @@ int WindowState::RunMsgLoop()
         DispatchMessage(&msg);
     }
     return static_cast<int>(msg.wParam);
+}
+
+void WindowState::get_open_path()
+{
+    FileState fileState(hwnd);
+    open_path = fileState.get_path();
+    fileState.read_file();
+    //std::string input_file = "C:/Users/MDaki/source/repos/OpenFIGI/OpenFIGI/tests/filetesting.txt";
+
 }

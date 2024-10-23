@@ -6,7 +6,6 @@
 #include <Windows.h>
 #include "FileState.h"
 
-class FileState;
 
 class WindowState
 {
@@ -17,21 +16,21 @@ public:
 	static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 	int RunMsgLoop();
+
+	void get_open_path();
 	
+
+private:
 	int PARENT_WINDOW_HEIGHT = 400;
 	int PARENT_WINDOW_WIDTH = 650;
 	int nWidth;
 	int nHeight;
 
-	HWND get_handle();
-
-	FileState file_state;
-
-private:
-
 	HINSTANCE hInstance;	// A handle to an instance.This is the base address of the module in memory.
 	int nCmdShow;
 	HWND hwnd;				// A handle to a window.
+	
+	std::string open_path;
 
 
 
