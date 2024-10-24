@@ -5,12 +5,15 @@
 
 #include <Windows.h>
 #include "FileState.h"
+#include "../Request.h"
 
+class FileState;
+class Request;
 
 class WindowState
 {
 public:
-	WindowState(HINSTANCE hInstance, int nCmdShow);
+	WindowState(HINSTANCE hInstance, int nCmdShow, FileState& fileState, Request& request);
 	~WindowState();
 
 	static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
@@ -18,6 +21,9 @@ public:
 	int RunMsgLoop();
 
 	void get_open_path();
+	void get_save_path();
+
+	HWND GetHWND() const;
 	
 
 private:
@@ -30,7 +36,13 @@ private:
 	int nCmdShow;
 	HWND hwnd;				// A handle to a window.
 	
-	std::string open_path;
+	std::string m_open_path;
+	std::string m_save_path;
+
+	FileState& fileState;
+	Request& request;
+
+
 
 
 

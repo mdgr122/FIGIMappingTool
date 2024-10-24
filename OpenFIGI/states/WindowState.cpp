@@ -6,14 +6,19 @@
 const wchar_t CLASS_NAME[] = L"OpenFIGILookup";
 const wchar_t WINDOW_TITLE[] = L"OpenFIGI Lookup";
 
-WindowState::WindowState(HINSTANCE hInstance, int nCmdShow)
+WindowState::WindowState(HINSTANCE hInstance, int nCmdShow, FileState& fileState, Request& request)
     : hInstance(hInstance)
     , hwnd(nullptr)
     , nCmdShow(nCmdShow)
     , nWidth{}
     , nHeight{}
-    , open_path{}
+    , m_open_path{}
+    , m_save_path{}
+    , fileState(fileState)
+    , request(request)
 {
+
+
     nWidth = GetSystemMetrics(SM_CXSCREEN);
     nHeight = GetSystemMetrics(SM_CYSCREEN);
 
@@ -31,7 +36,9 @@ WindowState::WindowState(HINSTANCE hInstance, int nCmdShow)
 
     if (hwnd != NULL)
     {
+
         ShowWindow(hwnd, nCmdShow);
+        RunMsgLoop();
     }
 
 }
@@ -94,7 +101,7 @@ bool WindowState::CreateMainWindow()
         NULL                    // Additional application data
     );
     
-    HWND hwndButton = CreateWindowEx(
+    HWND hwnd_open_button = CreateWindowEx(
         0,                      // Optional window styles.
         L"BUTTON",              // Window class
         L"File",                // Window text
@@ -105,6 +112,21 @@ bool WindowState::CreateMainWindow()
         25,                     // nHeight
         hwnd,                   // Parent window    
         (HMENU) ID_BUTTON_FILE,                   // Menu
+        hInstance,              // Instance handle
+        NULL
+    );
+
+    HWND hwnd_save_button = CreateWindowEx(
+        0,                      // Optional window styles.
+        L"BUTTON",              // Window class
+        L"SAVE",                // Window text
+        WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,    // Window style
+        550,                    // X
+        50,                     // Y
+        50,                     // nWidth
+        25,                     // nHeight
+        hwnd,                   // Parent window    
+        (HMENU)ID_BUTTON_SAVE,                   // Menu
         hInstance,              // Instance handle
         NULL
     );
@@ -144,10 +166,13 @@ LRESULT CALLBACK WindowState::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
             case ID_BUTTON_FILE:
                 pThis->get_open_path(); // Calling non-static member function
                 break;
+            case ID_BUTTON_SAVE:
+                pThis->get_save_path();
+                break;
             }
-        case WM_DESTROY:
-            PostQuitMessage(0);
-            return 0;
+        //case WM_DESTROY:
+        //    PostQuitMessage(0);
+        //    return 0;
 
         case WM_PAINT:
         {
@@ -176,6 +201,13 @@ int WindowState::RunMsgLoop()
 {
     MSG msg = { }; // Contains message information from a thread's message queue.
 
+    //BOOL GetMessage(
+    //    [out]          LPMSG lpMsg,
+    //    [in, optional] HWND  hWnd,
+    //    [in]           UINT  wMsgFilterMin,
+    //    [in]           UINT  wMsgFilterMax
+    //);
+
     // GetMessage: Retrieves a message from the calling thread's message queue. The function dispatches incoming sent messages until a posted message is available for retrieval.
     // This function removes the first message from the head of the queue. If the queue is empty, the function blocks until another message is queued.
     while (GetMessage(&msg, NULL, 0, 0) > 0)
@@ -192,9 +224,29 @@ int WindowState::RunMsgLoop()
 
 void WindowState::get_open_path()
 {
-    FileState fileState(hwnd);
-    open_path = fileState.get_path();
+    //FileState fileState;
+    m_open_path = fileState.get_open_path();
     fileState.read_file();
+
+    //Request request(fileState);
+    request.GetVec();
+    request.GetIdentifierType();
+    request.GetIdentifiers();
+
     //std::string input_file = "C:/Users/MDaki/source/repos/OpenFIGI/OpenFIGI/tests/filetesting.txt";
 
+}
+
+void WindowState::get_save_path()
+{
+    //FileState fileState;
+    m_save_path = fileState.get_save_path();
+    //fileState.read_file();
+    fileState.save_file(request.GetResponse());
+
+}
+
+HWND WindowState::GetHWND() const
+{
+    return hwnd;
 }

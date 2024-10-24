@@ -7,23 +7,35 @@
 #include <string>
 #include <vector>
 #include <filesystem>
+#include <memory>
+#include <json.hpp>
 #include "WindowState.h"
+
 
 class WindowState;
 
 class FileState
 {
 public:
-	FileState(HWND hwnd);
+	FileState();
 	~FileState();
 
-	std::string get_path();
+	std::string get_open_path();
+	std::string get_save_path();
+
 	void read_file();
+	void save_file(nlohmann::json response);
+
 	std::string WideToStr(const std::wstring& wstr);
 	std::string format_string(const std::string& open_path);
 
+	const HWND GetHWND() const;
 
-	OPENFILENAME ofn;
+	const std::vector<std::string>& GetVec() const;
+
+
+	OPENFILENAME ofn_open;
+	OPENFILENAME ofn_save;
 
 private:
 	wchar_t szFile[260];       // buffer for file name
@@ -31,7 +43,12 @@ private:
 	HANDLE hf;              // file handle
 
 	std::string m_open_path;
+	std::string m_save_path;
 
 	std::vector<std::string> m_input_vec;
+	nlohmann::json m_response;
+
+
+	std::shared_ptr<WindowState> hwnd_ptr;
 
 };

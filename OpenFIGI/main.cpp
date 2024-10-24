@@ -11,12 +11,13 @@
 int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ PWSTR pCmdLine, _In_ int nCmdShow)
 {
     
-
+    FileState fileState;
+    Request request(fileState);
     // Create an instance of the window class. This handles all the setup and window creation.
-    WindowState window_state(hInstance, nCmdShow);
-    return window_state.RunMsgLoop();   // Run the message loop and return the application's exit code.
 
-    Request request();
+    WindowState window_state(hInstance, nCmdShow, fileState, request);
+    //return window_state.RunMsgLoop();   // Run the message loop and return the application's exit code.
+
 }
 //
 //int main()

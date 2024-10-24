@@ -10,13 +10,15 @@ using namespace nlohmann;
 //{
 //}
 
-Request::Request(const std::vector<std::string>& identifiers) 
-	: m_Identifiers(identifiers)
+Request::Request(FileState& fileState)
+	: m_fileState(fileState)
 	, m_IdentifierPairs{}
-	, m_IdentifierType{IdentifierType::NONE}
+	, m_IdentifierType{ IdentifierType::NONE }
+	, m_sResponse{}
 {
-	GetIdentifierType();
-	GetIdentifiers();
+	//GetVec(m_fileState);
+	//GetIdentifierType();
+	//GetIdentifiers();
 }
 
 // A vector of pairs, where each pair contains a string identifier (T1) and an identifierType (T2).
@@ -80,8 +82,8 @@ void Request::GetIdentifiers()
 				},
 				cpr::Body{ jsonArray.dump() }
 			);
-			json sResponse = json::parse(r.text);
-			std::cout << sResponse.dump(4) << std::endl;
+			m_sResponse = json::parse(r.text);
+			std::cout << m_sResponse.dump(4) << std::endl;
 		}
 		else if (jsonArray.size() > 100)
 		{
@@ -209,6 +211,26 @@ bool Request::Validate_CUSIP(std::string& identifier)
 	}
 
 	return false;
+}
+
+void Request::GetVec()
+{
+	//const std::vector<std::string>& m_Identifiers = fileState.GetVec();
+	m_Identifiers = m_fileState.GetVec();
+
+	for (const auto& elem : m_Identifiers)
+	{
+		std::cout << elem << std::endl;
+	}
+}
+
+nlohmann::json Request::GetResponse()
+{
+	if (!m_sResponse.empty())
+	{
+		return m_sResponse;
+	}
+	return nullptr;
 }
 
 std::vector<std::pair<std::string, Request::IdentifierType>> Request::GetIdentifierType()

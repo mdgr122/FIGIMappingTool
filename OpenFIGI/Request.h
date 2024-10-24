@@ -6,11 +6,15 @@
 #include <json.hpp>
 #include <algorithm>
 #include <cctype>
+#include "states/FileState.h"
+
+class FileState;
 
 class Request
 {
 public:
-	Request(const std::vector<std::string>& identifiers);
+	//Request(const std::vector<std::string>& identifiers);
+	Request(FileState& fileState);
 	~Request() = default;
 
 	//void GetIdentifiers(std::vector<std::string>& identifiers);
@@ -40,21 +44,29 @@ public:
 		VENDOR_INDEX_CODE, NONE
 	};
 
+	//void GetVec(const FileState& fileState);
+	void GetVec();
+	nlohmann::json GetResponse();
+
 	std::vector<std::pair<std::string, IdentifierType>> GetIdentifierType();
 	
 	//void GetIdentifiers(std::vector<std::pair<std::string, Request::IdentifierType>>& identifierTypePairs);
 	void GetIdentifiers();
+
 
 	
 
 private:
 	const std::string API_KEY = "853a5b1c-9ee7-45a9-85fe-67504db399b0";
 
+	FileState& m_fileState;
 	std::vector<std::string> m_Identifiers;
 	std::vector<std::pair<std::string, Request::IdentifierType>> m_IdentifierPairs;
 
 
 	IdentifierType m_IdentifierType;
+	nlohmann::json m_sResponse;
+	//HWND hwnd;
 
 
 
