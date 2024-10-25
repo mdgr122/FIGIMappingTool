@@ -23,7 +23,7 @@ public:
 	std::string get_open_path();
 	std::string get_save_path();
 
-	void read_file();
+	void read_file(std::string file_path);
 	void save_file(nlohmann::json response);
 
 	std::string WideToStr(const std::wstring& wstr);

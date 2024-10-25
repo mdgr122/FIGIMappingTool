@@ -8,7 +8,15 @@ const wchar_t WINDOW_TITLE[] = L"OpenFIGI Lookup";
 
 WindowState::WindowState(HINSTANCE hInstance, int nCmdShow, FileState& fileState, Request& request)
     : hInstance(hInstance)
-    , hwnd(nullptr)
+    , hwnd{nullptr}
+    , hwndFileButton{nullptr}
+    , hwndRequestButton{nullptr}
+    , hwndSaveButton{nullptr}
+    , hwndSaveButton2{nullptr}
+    , hwndFilePath{nullptr}
+    , hwndSavePath{nullptr}
+    , hdcEdit{nullptr}
+    , hbrBackground{nullptr}
     , nCmdShow(nCmdShow)
     , nWidth{}
     , nHeight{}
@@ -45,6 +53,135 @@ WindowState::WindowState(HINSTANCE hInstance, int nCmdShow, FileState& fileState
 
 WindowState::~WindowState()
 {
+}
+
+// LRESULT - Signed result of message processing.
+// This function matches the signature required by a function pointer of type WNDPROC. 
+// When we assign lpfnWndProc above, the function's address is implicitly converted to a pointer of type WNDPROC.
+LRESULT CALLBACK WindowState::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+    // Because LRESULT CALLBACK WindowState::WindowProc is a static function, and the other functions within the WindowState class are non-static, there is an inherent mismatch.
+    // Because of this, callback functions don't have direct access to the WindowState instance and we mus tstore the instance pointer in the window data.
+    // This is done using  SetWindowLongPTR (SetWindowLong on 32bit). The GWLP_USERDATA index is used to store a pointer to the WindowState object in the window's internal data.
+    // The pointer is retrieved with the GetWindowLongPtr which allows the callback function to gain acess to the instance of the class.
+    // Once the instance is retrieved, we can use it to call non-static member functions and access instance-specific data.
+
+    // Retrieve the instance of WindowState from the window's user data
+    WindowState* pThis = reinterpret_cast<WindowState*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
+    HWND hEditControl = HWND(lParam);
+
+    if (pThis)
+    {
+        switch (uMsg)
+        {
+        case WM_COMMAND:
+        {
+            switch (LOWORD(wParam))
+            {
+            case ID_BUTTON_FILE_PATH:
+            {
+                pThis->get_open_path(); // Calling non-static member function
+                break;
+            }
+            case ID_BUTTON_SAVE_PATH:
+            {
+                pThis->get_save_path();
+                break;
+            }
+            case ID_BUTTON_SAVE:
+            {
+                pThis->save_output();
+                break;
+            }
+            case ID_BUTTON_REQUEST:
+            {
+                pThis->make_request();
+                break;
+            }
+            }
+            switch (HIWORD(wParam))
+            {
+                case EN_KILLFOCUS:
+                {
+                    switch (LOWORD(wParam))
+                    {
+                    case ID_FILE_PATH:
+                    {
+                        wchar_t buffer[256];
+                        GetWindowText(hEditControl, buffer, 256);
+                        //pThis->m_open_path = std::to_string(buffer);
+                        pThis->m_open_path = pThis->WideToStr(buffer);
+                        std::wcout << buffer << " Update File Path" << std::endl;
+                        std::cout << pThis->m_open_path << std::endl;
+                        break;
+                    }
+                    case ID_SAVE_PATH:
+                    {
+                        std::cout << "Do something else" << std::endl;
+                        break;
+                    }
+                    }
+                    break;
+                }
+            }
+            break;
+        }
+        case WM_CREATE:
+            // Create a solid brush with your desired color, e.g., light gray.
+            pThis->hbrBackground = CreateSolidBrush(RGB(240, 240, 240));
+            break;
+        case WM_CTLCOLOREDIT:
+        {   
+            //HWND hEditControl = HWND(lParam);
+            pThis->hdcEdit = (HDC)wParam;   // Handle to the device context of the control
+            switch (wParam)
+            {
+            case EN_CHANGE:
+                std::cout << "Do nothing" << std::endl;
+            }
+            if (hEditControl == pThis->hwndFilePath)
+            {
+                // Set the text and background colors
+                SetTextColor(pThis->hdcEdit, RGB(0, 0, 0));        // Text color (black)
+                SetBkColor(pThis->hdcEdit, RGB(169, 169, 169));    // Background color (light gray)
+            }
+            else if (hEditControl == pThis->hwndSavePath)
+            {
+                // Set the text and background colors
+                SetTextColor(pThis->hdcEdit, RGB(0, 0, 0));        // Text color (black)
+                SetBkColor(pThis->hdcEdit, RGB(169, 169, 169));    // Background color (light gray)
+            }
+
+
+            // Return the background brush to paint the control's background
+            return (INT_PTR)pThis->hbrBackground;
+        }
+        case WM_DESTROY:
+        {
+            PostQuitMessage(0);
+            return 0;
+        }
+        case WM_PAINT:
+        {
+            PAINTSTRUCT ps;
+
+            // The BeginPaint function fills in the PAINTSTRUCT structure with information on the repaint request. The current update region is given in the rcPaint member of PAINTSTRUCT.
+            HDC hdc = BeginPaint(hwnd, &ps);
+
+            // All painting occurs here, between BeginPaint and EndPaint.
+            // &ps.rcPaint is the coords of the rectangle to fill.
+            FillRect(hdc, &ps.rcPaint, (HBRUSH)(COLOR_WINDOW + 1));
+
+            // The EndPaint function clears the update region, which signals to Windows that the window has completed painting itself.
+            EndPaint(hwnd, &ps);
+        }
+        return 0;
+
+        default:
+            return DefWindowProc(hwnd, uMsg, wParam, lParam);
+        }
+    }
+    return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
 bool WindowState::RegisterWindowClass()
@@ -101,7 +238,7 @@ bool WindowState::CreateMainWindow()
         NULL                    // Additional application data
     );
     
-    HWND hwnd_open_button = CreateWindowEx(
+    hwndFileButton = CreateWindowEx(
         0,                      // Optional window styles.
         L"BUTTON",              // Window class
         L"File",                // Window text
@@ -109,24 +246,84 @@ bool WindowState::CreateMainWindow()
         550,                    // X
         10,                     // Y
         50,                     // nWidth
-        25,                     // nHeight
+        20,                     // nHeight
         hwnd,                   // Parent window    
-        (HMENU) ID_BUTTON_FILE,                   // Menu
+        (HMENU)ID_BUTTON_FILE_PATH, // Menu
         hInstance,              // Instance handle
         NULL
     );
 
-    HWND hwnd_save_button = CreateWindowEx(
+    hwndFilePath = CreateWindowEx(
+        0,                      // Optional window styles.
+        L"EDIT",                // Window class
+        L"",                    // Window text
+        WS_TABSTOP | WS_VISIBLE | WS_CHILD | WS_BORDER  | ES_LEFT | ES_AUTOHSCROLL,    // Window style
+        10,                     // X
+        10,                     // Y
+        530,                    // nWidth
+        20,                     // nHeight
+        hwnd,                   // Parent window    
+        (HMENU) ID_FILE_PATH,   // Menu
+        hInstance,//(HINSTANCE)GetWindowLongPtr(hwnd, GWLP_HINSTANCE),              // Instance handle
+        NULL
+    );
+
+    hwndRequestButton = CreateWindowEx(
         0,                      // Optional window styles.
         L"BUTTON",              // Window class
-        L"SAVE",                // Window text
+        L"Request",                // Window text
+        WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,    // Window style
+        225,                    // X
+        100,                     // Y
+        75,                     // nWidth
+        75,                     // nHeight
+        hwnd,                   // Parent window    
+        (HMENU)ID_BUTTON_REQUEST, // Menu
+        hInstance,              // Instance handle
+        NULL
+    );
+
+    hwndSaveButton = CreateWindowEx(
+        0,                      // Optional window styles.
+        L"BUTTON",              // Window class
+        L"Save",                // Window text
         WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,    // Window style
         550,                    // X
         50,                     // Y
         50,                     // nWidth
-        25,                     // nHeight
+        20,                     // nHeight
         hwnd,                   // Parent window    
         (HMENU)ID_BUTTON_SAVE,                   // Menu
+        hInstance,              // Instance handle
+        NULL
+    );
+    
+    hwndSaveButton2 = CreateWindowEx(
+        0,                      // Optional window styles.
+        L"BUTTON",              // Window class
+        L":",                // Window text
+        WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,    // Window style
+        601,                    // X
+        50,                     // Y
+        10,                     // nWidth
+        20,                     // nHeight
+        hwnd,                   // Parent window    
+        (HMENU)ID_BUTTON_SAVE_PATH,                   // Menu
+        hInstance,              // Instance handle
+        NULL
+    );
+
+    hwndSavePath = CreateWindowEx(
+        0,                      // Optional window styles.
+        L"EDIT",                // Window class
+        L"",                    // Window text
+        WS_TABSTOP | WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT | ES_AUTOHSCROLL,    // Window style
+        10,                     // X
+        50,                     // Y
+        530,                    // nWidth
+        20,                     // nHeight
+        hwnd,                   // Parent window    
+        (HMENU)ID_SAVE_PATH,   // Menu
         hInstance,              // Instance handle
         NULL
     );
@@ -143,59 +340,6 @@ bool WindowState::CreateMainWindow()
 }
 
 
-// LRESULT - Signed result of message processing.
-// This function matches the signature required by a function pointer of type WNDPROC. 
-// When we assign lpfnWndProc above, the function's address is implicitly converted to a pointer of type WNDPROC.
-LRESULT CALLBACK WindowState::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
-{
-    // Because LRESULT CALLBACK WindowState::WindowProc is a static function, and the other functions within the WindowState class are non-static, there is an inherent mismatch.
-    // Because of this, callback functions don't have direct access to the WindowState instance and we mus tstore the instance pointer in the window data.
-    // This is done using  SetWindowLongPTR (SetWindowLong on 32bit). The GWLP_USERDATA index is used to store a pointer to the WindowState object in the window's internal data.
-    // The pointer is retrieved with the GetWindowLongPtr which allows the callback function to gain acess to the instance of the class.
-    // Once the instance is retrieved, we can use it to call non-static member functions and access instance-specific data.
-
-    // Retrieve the instance of WindowState from the window's user data
-    WindowState* pThis = reinterpret_cast<WindowState*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
-    if (pThis)
-    {
-        switch (uMsg)
-        {
-        case WM_COMMAND:
-            switch (wParam)
-            {
-            case ID_BUTTON_FILE:
-                pThis->get_open_path(); // Calling non-static member function
-                break;
-            case ID_BUTTON_SAVE:
-                pThis->get_save_path();
-                break;
-            }
-        //case WM_DESTROY:
-        //    PostQuitMessage(0);
-        //    return 0;
-
-        case WM_PAINT:
-        {
-            PAINTSTRUCT ps;
-
-            // The BeginPaint function fills in the PAINTSTRUCT structure with information on the repaint request. The current update region is given in the rcPaint member of PAINTSTRUCT.
-            HDC hdc = BeginPaint(hwnd, &ps);
-
-            // All painting occurs here, between BeginPaint and EndPaint.
-            // &ps.rcPaint is the coords of the rectangle to fill.
-            FillRect(hdc, &ps.rcPaint, (HBRUSH)(COLOR_WINDOW + 1));
-
-            // The EndPaint function clears the update region, which signals to Windows that the window has completed painting itself.
-            EndPaint(hwnd, &ps);
-        }
-        return 0;
-
-        default:
-            return DefWindowProc(hwnd, uMsg, wParam, lParam);
-        }
-    }
-    return DefWindowProc(hwnd, uMsg, wParam, lParam);
-}
 
 int WindowState::RunMsgLoop()
 {
@@ -226,14 +370,8 @@ void WindowState::get_open_path()
 {
     //FileState fileState;
     m_open_path = fileState.get_open_path();
-    fileState.read_file();
-
-    //Request request(fileState);
-    request.GetVec();
-    request.GetIdentifierType();
-    request.GetIdentifiers();
-
-    //std::string input_file = "C:/Users/MDaki/source/repos/OpenFIGI/OpenFIGI/tests/filetesting.txt";
+    SetWindowText(this->hwndFilePath, stringToWideString(m_open_path).c_str());
+    // fileState.read_file();
 
 }
 
@@ -241,12 +379,45 @@ void WindowState::get_save_path()
 {
     //FileState fileState;
     m_save_path = fileState.get_save_path();
+    SetWindowText(this->hwndSavePath, stringToWideString(m_save_path).c_str());
     //fileState.read_file();
-    fileState.save_file(request.GetResponse());
+    //fileState.save_file(request.GetResponse());
 
+}
+
+void WindowState::make_request()
+{
+    //GetWindowText(this->hwndFilePath, stringToWideString(m_open_path).c_str());
+    fileState.read_file(m_open_path);
+    request.GetVec();
+    request.GetIdentifierType();
+    request.GetIdentifiers();
+}
+
+void WindowState::save_output()
+{
+    //GetWindowText(this->hwndSavePath, stringToWideString(m_save_path).c_str());
+    fileState.save_file(request.GetResponse());
+}
+
+std::wstring WindowState::stringToWideString(const std::string& str)
+{
+    int size_needed = MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, NULL, 0);
+    std::wstring wstr(size_needed, 0);
+    MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, &wstr[0], size_needed);
+    return wstr;
 }
 
 HWND WindowState::GetHWND() const
 {
     return hwnd;
+}
+
+std::string WindowState::WideToStr(const std::wstring& wstr)
+{
+    // Uses windows function
+    int size_in_bytes = WideCharToMultiByte(CP_UTF8, 0, &wstr[0], (int)wstr.size(), NULL, 0, NULL, NULL);
+    std::string strTo(size_in_bytes, 0);
+    WideCharToMultiByte(CP_UTF8, 0, &wstr[0], (int)wstr.size(), &strTo[0], size_in_bytes, NULL, NULL);
+    return strTo;
 }

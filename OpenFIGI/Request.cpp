@@ -71,19 +71,18 @@ void Request::GetIdentifiers()
 		{
 			invalid_idType_count++;
 		}
-
 		if (jsonArray.size() == 100 || jsonArray.size() == (m_IdentifierPairs.size() - invalid_idType_count))
 		{
 			cpr::Response r = cpr::Post(
 				cpr::Url{ "https://api.openfigi.com/v3/mapping" },
 				cpr::Header{
-					{"Content-Type", "text/json"},
-					{"X-OPENFIGI-API-KEY", API_KEY}
+					{"Content-Type", "application/json"},
+					{"X-OPENFIGI-APIKEY", API_KEY}
 				},
 				cpr::Body{ jsonArray.dump() }
 			);
-			m_sResponse = json::parse(r.text);
-			std::cout << m_sResponse.dump(4) << std::endl;
+			//m_sResponse = json::parse(r.text);32we
+			m_sResponse.push_back(json::parse(r.text));
 		}
 		else if (jsonArray.size() > 100)
 		{

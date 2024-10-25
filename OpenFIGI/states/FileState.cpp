@@ -26,7 +26,7 @@ std::string FileState::get_open_path()
 	ofn_open.lpstrFile = szFile;
 	ofn_open.lpstrFile[0] = '\0'; // Set lpstrFile[0] to '\0' so that GetOpenFileName does not use the contents of szFile to initialize itself.
 	ofn_open.nMaxFile = sizeof(szFile);
-	ofn_open.lpstrFilter = L".txt";	// L"All\0*.*\0Text\0*.TXT\0";
+	ofn_open.lpstrFilter = L"Text Files (*.txt)\0*.txt\0CSV Files (*.csv)\0*.csv\0All Files (*.*)\0*.*\0";	//L"All\0*.*\0Text\0*.TXT\0";
 	ofn_open.nFilterIndex = 1;
 	ofn_open.lpstrFileTitle = NULL;
 	ofn_open.nMaxFileTitle = 0;
@@ -61,7 +61,7 @@ std::string FileState::get_save_path()
 	ofn_save.lpstrFile = szFile;
 	ofn_save.lpstrFile[0] = '\0'; // Set lpstrFile[0] to '\0' so that GetOpenFileName does not use the contents of szFile to initialize itself.
 	ofn_save.nMaxFile = sizeof(szFile);
-	ofn_save.lpstrFilter = L".txt";	// L"All\0*.*\0Text\0*.TXT\0";
+	ofn_save.lpstrFilter = L"Text Files (*.txt)\0*.txt\0JSON Files (*.json)\0*.json\0All Files (*.*)\0*.*\0"; //L".json;.txt";
 	ofn_save.nFilterIndex = 1;
 	ofn_save.lpstrFileTitle = NULL;
 	ofn_save.nMaxFileTitle = 0;
@@ -88,30 +88,50 @@ std::string FileState::get_save_path()
 	return m_save_path;
 }
 
-void FileState::read_file()
+void FileState::read_file(std::string file_path)
 {
-
-	std::ifstream ifs(m_open_path);  // Open the file
-	
-	std::string line;
-	
-	if (ifs.is_open()) 
+	if (file_path == m_open_path)
 	{
-		while (std::getline(ifs, line))
+		std::ifstream ifs(m_open_path);  // Open the file
+
+		std::string line;
+
+		if (ifs.is_open())
 		{
-			m_input_vec.push_back(line);
+			while (std::getline(ifs, line))
+			{
+				m_input_vec.push_back(line);
+			}
+			ifs.close();
 		}
-		ifs.close();
+		else {
+			std::cerr << "Unable to open file\n";
+		}
 	}
-	else {
-		std::cerr << "Unable to open file\n";
+	else
+	{
+		std::ifstream ifs(file_path);  // Open the file
+
+		std::string line;
+
+		if (ifs.is_open())
+		{
+			while (std::getline(ifs, line))
+			{
+				m_input_vec.push_back(line);
+			}
+			ifs.close();
+		}
+		else {
+			std::cerr << "Unable to open file\n";
+		}
 	}
 
 }
 
 void FileState::save_file(nlohmann::json response)
 {
-	std::string save_path = m_save_path + "figi_codes.txt";
+	std::string save_path = m_save_path;
 	std::ofstream ofs(save_path);
 
 	ofs << response.dump(4);
