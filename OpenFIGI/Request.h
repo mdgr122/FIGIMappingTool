@@ -44,14 +44,13 @@ public:
 		VENDOR_INDEX_CODE, NONE
 	};
 
-	//void GetVec(const FileState& fileState);
 	void GetVec();
+	std::vector<std::pair<std::string, IdentifierType>> GetIdentifierType();	
+	void GetIdentifiers();
+
 	nlohmann::json GetResponse();
 
-	std::vector<std::pair<std::string, IdentifierType>> GetIdentifierType();
-	
-	//void GetIdentifiers(std::vector<std::pair<std::string, Request::IdentifierType>>& identifierTypePairs);
-	void GetIdentifiers();
+	void ParseResponse();
 
 
 	
@@ -66,6 +65,8 @@ private:
 
 	IdentifierType m_IdentifierType;
 	nlohmann::json m_sResponse;
+	nlohmann::json m_RequestBody;
+	nlohmann::json m_AllRequestBody;
 	//HWND hwnd;
 
 

@@ -15,6 +15,8 @@ Request::Request(FileState& fileState)
 	, m_IdentifierPairs{}
 	, m_IdentifierType{ IdentifierType::NONE }
 	, m_sResponse{}
+	, m_RequestBody{}
+	, m_AllRequestBody{}
 {
 	//GetVec(m_fileState);
 	//GetIdentifierType();
@@ -26,11 +28,12 @@ Request::Request(FileState& fileState)
 // If neither T1 nor T2 is a possibly cv-qualified class type with non-trivial destructor, or array thereof, the destructor of pair is trivial.
 void Request::GetIdentifiers()
 {
-	std::string idType = "";
+	std::string idType;
+	std::string exch_code;
 	size_t invalid_idType_count = 0;
 	size_t pos = 0;
 
-	json jsonArray = json::array();
+	//json jsonArray;
 	json badResponse = json::array({"warning", "No identifier found."});
 	
 	// 100 MAPPING REQUESTS	
@@ -40,6 +43,7 @@ void Request::GetIdentifiers()
 		{
 		case Request::IdentifierType::ID_ISIN:
 			idType = "ID_ISIN";
+			exch_code = elem.first.substr(0, 2);
 			break;
 		case Request::IdentifierType::TICKER:
 			idType = "TICKER";
@@ -56,22 +60,35 @@ void Request::GetIdentifiers()
 		default:
 				break;
 		}
-		if (idType != "NONE")
+		if (idType == "ID_ISIN")
 		{
 			json jsonBody
 			{
 				{"idType", idType},
 				{"idValue", elem.first},
-				{"exchCode", "US"},
+				{"exchCode", exch_code},
+				{"includeUnlistedEquities", true},
+			};
+			m_RequestBody.push_back(jsonBody);
+			m_AllRequestBody.push_back(jsonBody);
+		}
+		else if(idType != "NONE")
+		{
+			json jsonBody
+			{
+				{"idType", idType},
+				{"idValue", elem.first},
 				{"includeUnlistedEquities", true}
 			};
-			jsonArray.push_back(jsonBody);
+			m_RequestBody.push_back(jsonBody);
+			m_AllRequestBody.push_back(jsonBody);
 		}
 		else
 		{
 			invalid_idType_count++;
 		}
-		if (jsonArray.size() == 100 || jsonArray.size() == (m_IdentifierPairs.size() - invalid_idType_count))
+
+		if (m_RequestBody.size() == 100 || m_RequestBody.size() == (m_IdentifierPairs.size() - invalid_idType_count))
 		{
 			cpr::Response r = cpr::Post(
 				cpr::Url{ "https://api.openfigi.com/v3/mapping" },
@@ -79,14 +96,13 @@ void Request::GetIdentifiers()
 					{"Content-Type", "application/json"},
 					{"X-OPENFIGI-APIKEY", API_KEY}
 				},
-				cpr::Body{ jsonArray.dump() }
+				cpr::Body{ m_RequestBody.dump() }
 			);
-			//m_sResponse = json::parse(r.text);32we
 			m_sResponse.push_back(json::parse(r.text));
 		}
-		else if (jsonArray.size() > 100)
+		else if (m_RequestBody.size() > 100)
 		{
-			jsonArray.clear();
+			m_RequestBody.clear();
 		}
 		pos++;
 	}
@@ -214,7 +230,6 @@ bool Request::Validate_CUSIP(std::string& identifier)
 
 void Request::GetVec()
 {
-	//const std::vector<std::string>& m_Identifiers = fileState.GetVec();
 	m_Identifiers = m_fileState.GetVec();
 
 	for (const auto& elem : m_Identifiers)
@@ -227,9 +242,35 @@ nlohmann::json Request::GetResponse()
 {
 	if (!m_sResponse.empty())
 	{
+		ParseResponse();
 		return m_sResponse;
 	}
 	return nullptr;
+}
+
+void Request::ParseResponse()
+{
+
+	size_t counter = 0;
+
+	auto& inner_json = m_sResponse[0];
+
+	for (auto& elem : inner_json)
+	{
+		elem["exchCode"] = (m_AllRequestBody[counter]["exchCode"]);
+		elem["idValue"] = (m_AllRequestBody[counter]["idValue"]);
+		elem["idType"] = (m_AllRequestBody[counter]["idType"]);
+		counter++;
+		//if (elem.contains("data"))
+		//{
+
+		//	elem["exchCode"] = (m_AllRequestBody[counter]["exchCode"]);
+		//	elem["idValue"] = (m_AllRequestBody[counter]["idValue"]);
+		//	elem["idType"] = (m_AllRequestBody[counter]["idType"]);
+		//	counter++;
+		//}
+	}
+
 }
 
 std::vector<std::pair<std::string, Request::IdentifierType>> Request::GetIdentifierType()
