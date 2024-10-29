@@ -2,6 +2,7 @@
 # project specific logic here.
 #
 cmake_minimum_required (VERSION 3.8)
+set(AUTHOR_NAME "Michael Dakin")
 
 # Enable Hot Reload for MSVC compilers if supported.
 if (POLICY CMP0141)
@@ -44,4 +45,20 @@ target_include_directories(json_lib INTERFACE
 find_package(cpr CONFIG REQUIRED)
 target_link_libraries(OpenFIGI PRIVATE cpr::cpr)
 target_link_libraries(OpenFIGI PRIVATE json_lib)
+
+configure_file(
+  ${CMAKE_CURRENT_SOURCE_DIR}/version.rc
+  ${CMAKE_CURRENT_BINARY_DIR}/version.rc
+  @ONLY
+)
+set(PROJECT_VERSION_MAJOR 0)
+set(PROJECT_VERSION_MINOR 1)
+set(PROJECT_VERSION_PATCH 0)
+set(PROJECT_VERSION_TWEAK 0)
+set(PROJECT_VERSION_STRING "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}.${PROJECT_VERSION_TWEAK}")
+
+
+
+# Add the .rc file to your executable target
+target_sources(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/version.rc)
 
