@@ -15,8 +15,11 @@ WindowState::WindowState(HINSTANCE hInstance, int nCmdShow, FileState& fileState
     , hwndSaveButton2{nullptr}
     , hwndFilePath{nullptr}
     , hwndSavePath{nullptr}
-    , hdcEdit{nullptr}
+    , hwndWaitingMsg{nullptr}
+    //, hdcEdit{ nullptr }
+    //, hdcStatic{nullptr}
     , hbrBackground{nullptr}
+    , hBackground{nullptr}
     , nCmdShow(nCmdShow)
     , nWidth{}
     , nHeight{}
@@ -68,7 +71,6 @@ LRESULT CALLBACK WindowState::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 
     // Retrieve the instance of WindowState from the window's user data
     WindowState* pThis = reinterpret_cast<WindowState*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
-    HWND hEditControl = HWND(lParam);
 
     if (pThis)
     {
@@ -95,7 +97,15 @@ LRESULT CALLBACK WindowState::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
             }
             case ID_BUTTON_REQUEST:
             {
-                pThis->make_request();
+                bool flag = true;
+                while (flag)
+                {
+                    SetWindowText(pThis->hwndWaitingMsg, L"Processing...");
+                    pThis->make_request();
+                    flag = false;
+                }
+                SetWindowText(pThis->hwndWaitingMsg, L"");
+                SetWindowText(pThis->hwndWaitingMsg, L"Complete!");
                 break;
             }
             }
@@ -103,21 +113,29 @@ LRESULT CALLBACK WindowState::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
             {
                 case EN_KILLFOCUS:
                 {
+                    HWND hEditControl = (HWND)lParam;
                     switch (LOWORD(wParam))
                     {
                     case ID_FILE_PATH:
                     {
+                       /*
+                       int GetWindowTextA(
+                            [in]  HWND  hWnd,
+                            [out] LPSTR lpString,
+                            [in]  int   nMaxCount
+                        );
+                        */
+
                         wchar_t buffer[256];
                         GetWindowText(hEditControl, buffer, 256);
-                        //pThis->m_open_path = std::to_string(buffer);
                         pThis->m_open_path = pThis->WideToStr(buffer);
-                        std::wcout << buffer << " Update File Path" << std::endl;
-                        std::cout << pThis->m_open_path << std::endl;
                         break;
                     }
                     case ID_SAVE_PATH:
                     {
-                        std::cout << "Do something else" << std::endl;
+                        wchar_t buffer[256];
+                        GetWindowText(hEditControl, buffer, 256);
+                        pThis->m_save_path = pThis->WideToStr(buffer);
                         break;
                     }
                     }
@@ -132,29 +150,36 @@ LRESULT CALLBACK WindowState::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
             break;
         case WM_CTLCOLOREDIT:
         {   
+            HWND hEditControl = (HWND)lParam;
+            HDC hdcEdit = (HDC)wParam; // Handle to the device context of the control
             //HWND hEditControl = HWND(lParam);
-            pThis->hdcEdit = (HDC)wParam;   // Handle to the device context of the control
-            switch (wParam)
-            {
-            case EN_CHANGE:
-                std::cout << "Do nothing" << std::endl;
-            }
+            //pThis->hdcEdit = (HDC)wParam;   // Handle to the device context of the control
             if (hEditControl == pThis->hwndFilePath)
             {
                 // Set the text and background colors
-                SetTextColor(pThis->hdcEdit, RGB(0, 0, 0));        // Text color (black)
-                SetBkColor(pThis->hdcEdit, RGB(169, 169, 169));    // Background color (light gray)
+                SetTextColor(hdcEdit, RGB(0, 0, 0));        // Text color (black)
+                SetBkColor(hdcEdit, RGB(169, 169, 169));    // Background color (light gray)
             }
             else if (hEditControl == pThis->hwndSavePath)
             {
                 // Set the text and background colors
-                SetTextColor(pThis->hdcEdit, RGB(0, 0, 0));        // Text color (black)
-                SetBkColor(pThis->hdcEdit, RGB(169, 169, 169));    // Background color (light gray)
+                SetTextColor(hdcEdit, RGB(0, 0, 0));        // Text color (black)
+                SetBkColor(hdcEdit, RGB(169, 169, 169));    // Background color (light gray)
             }
-
 
             // Return the background brush to paint the control's background
             return (INT_PTR)pThis->hbrBackground;
+        }
+        case WM_CTLCOLORSTATIC:
+        {
+            HWND hStaticControl = (HWND)lParam;
+            HDC hdcStatic = (HDC)wParam;
+
+            if (hStaticControl == pThis->hwndWaitingMsg)
+            {
+                SetBkMode(hdcStatic, TRANSPARENT);
+            }
+            return (INT_PTR)GetStockObject(WHITE_BRUSH);
         }
         case WM_DESTROY:
         {
@@ -248,7 +273,7 @@ bool WindowState::CreateMainWindow()
         50,                     // nWidth
         20,                     // nHeight
         hwnd,                   // Parent window    
-        (HMENU)ID_BUTTON_FILE_PATH, // Menu
+        (HMENU) ID_BUTTON_FILE_PATH, // Menu
         hInstance,              // Instance handle
         NULL
     );
@@ -273,12 +298,12 @@ bool WindowState::CreateMainWindow()
         L"BUTTON",              // Window class
         L"Request",                // Window text
         WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,    // Window style
-        225,                    // X
+        2,                    // X
         100,                     // Y
-        75,                     // nWidth
-        75,                     // nHeight
+        630,                     // nWidth
+        50,                     // nHeight
         hwnd,                   // Parent window    
-        (HMENU)ID_BUTTON_REQUEST, // Menu
+        (HMENU) ID_BUTTON_REQUEST, // Menu
         hInstance,              // Instance handle
         NULL
     );
@@ -293,7 +318,7 @@ bool WindowState::CreateMainWindow()
         50,                     // nWidth
         20,                     // nHeight
         hwnd,                   // Parent window    
-        (HMENU)ID_BUTTON_SAVE,                   // Menu
+        (HMENU) ID_BUTTON_SAVE,                   // Menu
         hInstance,              // Instance handle
         NULL
     );
@@ -308,7 +333,7 @@ bool WindowState::CreateMainWindow()
         10,                     // nWidth
         20,                     // nHeight
         hwnd,                   // Parent window    
-        (HMENU)ID_BUTTON_SAVE_PATH,                   // Menu
+        (HMENU) ID_BUTTON_SAVE_PATH,                   // Menu
         hInstance,              // Instance handle
         NULL
     );
@@ -323,7 +348,22 @@ bool WindowState::CreateMainWindow()
         530,                    // nWidth
         20,                     // nHeight
         hwnd,                   // Parent window    
-        (HMENU)ID_SAVE_PATH,   // Menu
+        (HMENU) ID_SAVE_PATH,   // Menu
+        hInstance,              // Instance handle
+        NULL
+    );
+
+    hwndWaitingMsg = CreateWindowEx(
+        0,                      // Optional window styles.
+        L"STATIC",              // Window class
+        L"",                // Window text
+        WS_TABSTOP | WS_VISIBLE | WS_CHILD | SS_CENTER, //| SS_BLACKFRAME,    // Window style
+        get_parent_middle_width(PARENT_WINDOW_WIDTH, 100),                    // X
+        325,                     // Y
+        100,                     // nWidth
+        20,                     // nHeight
+        hwnd,                   // Parent window    
+        (HMENU) ID_STATIC_MSG,                   // Menu
         hInstance,              // Instance handle
         NULL
     );
@@ -391,14 +431,20 @@ void WindowState::make_request()
     fileState.read_file(m_open_path);
     request.GetVec();
     request.GetIdentifierType();
-    request.GetIdentifiers();
+    request.GetIdentifiers(); // Where the actual request is made
 }
 
 void WindowState::save_output()
 {
     //GetWindowText(this->hwndSavePath, stringToWideString(m_save_path).c_str());
-    fileState.save_file(request.GetResponse());
+    fileState.save_file(request.GetResponse(), m_save_path);
 }
+
+int WindowState::get_parent_middle_width(int parent_width, int child_width)
+{
+    return ((parent_width - child_width) / 2);
+}
+
 
 std::wstring WindowState::stringToWideString(const std::string& str)
 {

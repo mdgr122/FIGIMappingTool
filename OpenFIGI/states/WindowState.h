@@ -6,6 +6,7 @@
 #define ID_BUTTON_REQUEST 1004
 #define ID_FILE_PATH 1005
 #define ID_SAVE_PATH 1006
+#define ID_STATIC_MSG 1007
 
 #include <Windows.h>
 #include "FileState.h"
@@ -29,6 +30,8 @@ public:
 	void make_request();
 	void save_output();
 
+	int get_parent_middle_width(int parent_width, int child_width);
+
 	std::wstring stringToWideString(const std::string& str);
 	std::string WideToStr(const std::wstring& wstr);
 
@@ -51,10 +54,13 @@ private:
 	HWND hwndSaveButton2;
 	HWND hwndFilePath;				// Handle for file path
 	HWND hwndSavePath;				// Handle for file path
+	HWND hwndWaitingMsg;
 	
-	HDC hdcEdit;				// Handle to the device context of the control
+	//HDC hdcEdit;				// Handle to the device context of the control
+	//HDC hdcStatic;				// Handle to the device context of the control
 
 	HBRUSH hbrBackground;
+	HBRUSH hBackground;
 	
 	std::string m_open_path;
 	std::string m_save_path;

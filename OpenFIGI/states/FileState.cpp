@@ -129,9 +129,9 @@ void FileState::read_file(std::string file_path)
 
 }
 
-void FileState::save_file(nlohmann::json response)
+void FileState::save_file(nlohmann::json response, std::string save_path)
 {
-	std::string save_path = m_save_path;
+	//std::string save_path = m_save_path;
 	std::ofstream ofs(save_path);
 
 	ofs << response.dump(4);

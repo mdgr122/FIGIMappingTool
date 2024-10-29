@@ -24,7 +24,7 @@ public:
 	std::string get_save_path();
 
 	void read_file(std::string file_path);
-	void save_file(nlohmann::json response);
+	void save_file(nlohmann::json response, std::string save_path);
 
 	std::string WideToStr(const std::wstring& wstr);
 	std::string format_string(const std::string& open_path);
