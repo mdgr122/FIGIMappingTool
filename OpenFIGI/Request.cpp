@@ -14,8 +14,8 @@ Request::Request(FileState& fileState)
 	: m_fileState(fileState)
 	, m_IdentifierPairs{}
 	, m_IdentifierType{ IdentifierType::NONE }
-	, m_sResponse{}
-	, m_RequestBody{}
+	, m_sResponse{json::array()}
+	, m_RequestBody{json::array()}
 	, m_AllRequestBody{}
 {
 	//GetVec(m_fileState);
@@ -30,20 +30,29 @@ void Request::GetIdentifiers()
 {
 	std::string idType;
 	std::string exch_code;
-	size_t invalid_idType_count = 0;
-	size_t pos = 0;
+	
+	
+	size_t counter = 0;
+	size_t job_count = 0;
+	
+	json jsonBody;
+	json requestBody = json::array();
 
 	//json jsonArray;
 	json badResponse = json::array({"warning", "No identifier found."});
+
+	Timer timer;
+	timer.Start(); // begin the timer
+	bool api_cooldown;
 	
 	// 100 MAPPING REQUESTS	
 	for (const auto& elem : m_IdentifierPairs)
 	{
+		counter++;
 		switch (elem.second)
 		{
 		case Request::IdentifierType::ID_ISIN:
 			idType = "ID_ISIN";
-			exch_code = elem.first.substr(0, 2);
 			break;
 		case Request::IdentifierType::TICKER:
 			idType = "TICKER";
@@ -62,33 +71,58 @@ void Request::GetIdentifiers()
 		}
 		if (idType == "ID_ISIN")
 		{
-			json jsonBody
+			exch_code = ((elem.first.substr(0, 2)) == "US") ? "US" : "";
+			
+			if (!exch_code.empty())
 			{
-				{"idType", idType},
-				{"idValue", elem.first},
-				{"exchCode", exch_code},
-				{"includeUnlistedEquities", true},
-			};
-			m_RequestBody.push_back(jsonBody);
+				jsonBody =
+				{
+					{"idType", idType},
+					{"idValue", elem.first},
+					{"exchCode", exch_code},
+					{"includeUnlistedEquities", true},
+				};
+			}
+			else 
+			{
+				jsonBody =
+				{
+					{"idType", idType},
+					{"idValue", elem.first},
+					{"includeUnlistedEquities", true},
+				};
+			}
+			requestBody.push_back(jsonBody);
 			m_AllRequestBody.push_back(jsonBody);
 		}
 		else if(idType != "NONE")
 		{
-			json jsonBody
+			jsonBody = 
 			{
 				{"idType", idType},
 				{"idValue", elem.first},
 				{"includeUnlistedEquities", true}
 			};
-			m_RequestBody.push_back(jsonBody);
+			requestBody.push_back(jsonBody);
 			m_AllRequestBody.push_back(jsonBody);
 		}
 		else
 		{
-			invalid_idType_count++;
+			std::cout << "Invalid" << std::endl;
 		}
 
-		if (m_RequestBody.size() == 100 || m_RequestBody.size() == (m_IdentifierPairs.size() - invalid_idType_count))
+		while (job_count >= 26 && timer.ElapsedSec() <= 6 && api_cooldown == true)
+		{
+			if (timer.ElapsedSec() > 6)
+			{
+				job_count = 0;
+				timer.Stop();
+				timer.Start();
+				api_cooldown = false;
+			}
+		}
+
+		if (requestBody.size() == 100 || (m_IdentifierPairs.size() - counter) == 0)
 		{
 			cpr::Response r = cpr::Post(
 				cpr::Url{ "https://api.openfigi.com/v3/mapping" },
@@ -96,16 +130,18 @@ void Request::GetIdentifiers()
 					{"Content-Type", "application/json"},
 					{"X-OPENFIGI-APIKEY", API_KEY}
 				},
-				cpr::Body{ m_RequestBody.dump() }
+				cpr::Body{ requestBody.dump() }
 			);
-			m_sResponse.push_back(json::parse(r.text));
+			job_count++;
+
+			json responseJson = json::parse(r.text);
+			m_sResponse.insert(m_sResponse.end(), responseJson.begin(), responseJson.end());
+			m_RequestBody.insert(m_RequestBody.end(), responseJson.begin(), responseJson.end());
+			requestBody.clear();
+
 		}
-		else if (m_RequestBody.size() > 100)
-		{
-			m_RequestBody.clear();
-		}
-		pos++;
 	}
+	std::cout << " Request Complete " << std::endl;
 
 }
 
@@ -253,7 +289,10 @@ void Request::ParseResponse()
 
 	size_t counter = 0;
 
-	auto& inner_json = m_sResponse[0];
+	auto& inner_json = m_sResponse;
+	size_t m_AllRequestBodySize = m_AllRequestBody.size();
+	size_t m_sResponseSize = m_sResponse[0].size();
+	size_t m_sResponseSize2 = m_sResponse.size();
 
 	for (auto& elem : inner_json)
 	{
@@ -261,14 +300,6 @@ void Request::ParseResponse()
 		elem["idValue"] = (m_AllRequestBody[counter]["idValue"]);
 		elem["idType"] = (m_AllRequestBody[counter]["idType"]);
 		counter++;
-		//if (elem.contains("data"))
-		//{
-
-		//	elem["exchCode"] = (m_AllRequestBody[counter]["exchCode"]);
-		//	elem["idValue"] = (m_AllRequestBody[counter]["idValue"]);
-		//	elem["idType"] = (m_AllRequestBody[counter]["idType"]);
-		//	counter++;
-		//}
 	}
 
 }

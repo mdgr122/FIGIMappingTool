@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cctype>
 #include "states/FileState.h"
+#include "utilities/Timer.h"
 
 class FileState;
 
