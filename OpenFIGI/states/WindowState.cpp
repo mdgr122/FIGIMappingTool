@@ -33,6 +33,8 @@ WindowState::WindowState(HINSTANCE hInstance, int nCmdShow, FileState& fileState
     nWidth = GetSystemMetrics(SM_CXSCREEN);
     nHeight = GetSystemMetrics(SM_CYSCREEN);
 
+
+
     if (!RegisterWindowClass())
     {
         std::cerr << "Failed to register the window class!" << std::endl;
@@ -92,11 +94,33 @@ LRESULT CALLBACK WindowState::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
             }
             case ID_BUTTON_SAVE:
             {
+                if (pThis->m_save_path.empty())
+                {
+                    SetWindowText(pThis->hwndWaitingMsg, L"");
+                    SetWindowText(pThis->hwndWaitingMsg, L"Save Path Empty!");
+                    break;
+                }
+
+                if ((pThis->request.GetResponse()).empty())
+                {
+                    SetWindowText(pThis->hwndWaitingMsg, L"");
+                    SetWindowText(pThis->hwndWaitingMsg, L"Nothing to Save");
+                    break;
+                }
+
                 pThis->save_output();
+                SetWindowText(pThis->hwndWaitingMsg, L"");
+                SetWindowText(pThis->hwndWaitingMsg, L"File Saved");
                 break;
             }
             case ID_BUTTON_REQUEST:
             {
+                if (pThis->m_open_path.empty())
+                {
+                    SetWindowText(pThis->hwndWaitingMsg, L"");
+                    SetWindowText(pThis->hwndWaitingMsg, L"Input Path Empty!");
+                    break;
+                }
                 bool flag = true;
                 while (flag)
                 {
@@ -248,13 +272,16 @@ bool WindowState::CreateMainWindow()
     //    [in, optional] LPVOID    lpParam
     //);
 
+    int xPos = (nWidth - PARENT_WINDOW_WIDTH) / 2;
+    int yPos = (nHeight - PARENT_WINDOW_HEIGHT) / 2;
+
     hwnd = CreateWindowEx(
         0,                      // Optional window styles.
         CLASS_NAME,             // Window class
         WINDOW_TITLE,           // Window text
-        WS_OVERLAPPEDWINDOW,    // Window style
-        CW_USEDEFAULT,          // X
-        CW_USEDEFAULT,          // Y
+        WS_OVERLAPPEDWINDOW & ~WS_THICKFRAME & ~WS_MAXIMIZEBOX,    // Window style
+        xPos,          // X
+        yPos,          // Y
         PARENT_WINDOW_WIDTH,          // nWidth
         PARENT_WINDOW_HEIGHT,          // nHeight
         NULL,                   // Parent window    
@@ -330,7 +357,7 @@ bool WindowState::CreateMainWindow()
         WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,    // Window style
         601,                    // X
         50,                     // Y
-        10,                     // nWidth
+        16,                     // nWidth
         20,                     // nHeight
         hwnd,                   // Parent window    
         (HMENU) ID_BUTTON_SAVE_PATH,                   // Menu
@@ -358,9 +385,9 @@ bool WindowState::CreateMainWindow()
         L"STATIC",              // Window class
         L"",                // Window text
         WS_TABSTOP | WS_VISIBLE | WS_CHILD | SS_CENTER, //| SS_BLACKFRAME,    // Window style
-        get_parent_middle_width(PARENT_WINDOW_WIDTH, 100),                    // X
-        325,                     // Y
-        100,                     // nWidth
+        get_parent_middle_width(PARENT_WINDOW_WIDTH, 200),                    // X
+        175,                     // Y
+        200,                     // nWidth
         20,                     // nHeight
         hwnd,                   // Parent window    
         (HMENU) ID_STATIC_MSG,                   // Menu
@@ -428,6 +455,15 @@ void WindowState::get_save_path()
 void WindowState::make_request()
 {
     //GetWindowText(this->hwndFilePath, stringToWideString(m_open_path).c_str());
+    //if (!m_open_path.empty())
+    //{
+    //    fileState.read_file(m_open_path);
+    //    request.GetVec();
+    //    request.GetIdentifierType();
+    //    request.GetIdentifiers(); // Where the actual request is made
+    //    return true;
+    //}
+    //return false;
     fileState.read_file(m_open_path);
     request.GetVec();
     request.GetIdentifierType();

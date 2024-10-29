@@ -39,7 +39,7 @@ public:
 	
 
 private:
-	int PARENT_WINDOW_HEIGHT = 400;
+	int PARENT_WINDOW_HEIGHT = 250;
 	int PARENT_WINDOW_WIDTH = 650;
 	int nWidth;
 	int nHeight;
