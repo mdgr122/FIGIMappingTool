@@ -49,6 +49,7 @@ void Request::GetIdentifiers()
 	for (const auto& elem : m_IdentifierPairs)
 	{
 		counter++;
+		std::string test = elem.first;
 		switch (elem.second)
 		{
 		case Request::IdentifierType::ID_ISIN:
@@ -66,12 +67,17 @@ void Request::GetIdentifiers()
 		case Request::IdentifierType::ID_SEDOL:
 			idType = "ID_SEDOL";
 			break;
+		case Request::IdentifierType::NONE:
+			idType = "NONE";
+			break;
 		default:
 				break;
 		}
 		if (idType == "ID_ISIN")
 		{
-			exch_code = ((elem.first.substr(0, 2)) == "US") ? "US" : "";
+			// Temporarily removing to allow all results
+			//exch_code = ((elem.first.substr(0, 2)) == "US") ? "US" : "";
+			exch_code = "";
 			
 			if (!exch_code.empty())
 			{
@@ -95,7 +101,7 @@ void Request::GetIdentifiers()
 			requestBody.push_back(jsonBody);
 			m_AllRequestBody.push_back(jsonBody);
 		}
-		else if(idType != "NONE")
+		if(idType != "NONE")
 		{
 			jsonBody = 
 			{
@@ -106,10 +112,7 @@ void Request::GetIdentifiers()
 			requestBody.push_back(jsonBody);
 			m_AllRequestBody.push_back(jsonBody);
 		}
-		else
-		{
-			std::cout << "Invalid" << std::endl;
-		}
+
 
 		while (job_count >= 26 && timer.ElapsedSec() <= 6 && api_cooldown == true)
 		{
@@ -141,8 +144,6 @@ void Request::GetIdentifiers()
 
 		}
 	}
-	std::cout << " Request Complete " << std::endl;
-
 }
 
 
@@ -282,6 +283,14 @@ nlohmann::json Request::GetResponse()
 		return m_sResponse;
 	}
 	return nullptr;
+}
+
+void Request::ClearResponse()
+{
+	m_IdentifierPairs.clear();
+	m_sResponse.clear();
+	m_RequestBody.clear();
+	m_AllRequestBody.clear();
 }
 
 void Request::ParseResponse()

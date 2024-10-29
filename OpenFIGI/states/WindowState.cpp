@@ -279,7 +279,8 @@ bool WindowState::CreateMainWindow()
         0,                      // Optional window styles.
         CLASS_NAME,             // Window class
         WINDOW_TITLE,           // Window text
-        WS_OVERLAPPEDWINDOW & ~WS_THICKFRAME & ~WS_MAXIMIZEBOX,    // Window style
+        //WS_OVERLAPPEDWINDOW & ~WS_THICKFRAME & ~WS_MAXIMIZEBOX,    // Window style
+        WS_OVERLAPPEDWINDOW & ~WS_THICKFRAME & ~WS_MAXIMIZEBOX,
         xPos,          // X
         yPos,          // Y
         PARENT_WINDOW_WIDTH,          // nWidth
@@ -464,6 +465,10 @@ void WindowState::make_request()
     //    return true;
     //}
     //return false;
+    if (!(request.GetResponse()).empty())
+    {
+        request.ClearResponse();
+    }
     fileState.read_file(m_open_path);
     request.GetVec();
     request.GetIdentifierType();

@@ -50,6 +50,7 @@ public:
 	void GetIdentifiers();
 
 	nlohmann::json GetResponse();
+	void ClearResponse();
 
 	void ParseResponse();
 
