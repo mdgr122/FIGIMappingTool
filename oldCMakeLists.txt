@@ -1,7 +1,8 @@
-﻿# CMakeList.txt : CMake project for OpenFIGI, include source and define
+# CMakeList.txt : CMake project for OpenFIGI, include source and define
 # project specific logic here.
 #
 cmake_minimum_required (VERSION 3.8)
+set(AUTHOR_NAME "Michael Dakin")
 
 # Enable Hot Reload for MSVC compilers if supported.
 if (POLICY CMP0141)
@@ -22,7 +23,7 @@ add_executable (
 	"OpenFIGI/states/WindowState.h"
 	"OpenFIGI/states/WindowState.cpp"
 	"OpenFIGI/states/FileState.h" 
-	"OpenFIGI/states/FileState.cpp" "OpenFIGI/utilities/Timer.h" "OpenFIGI/utilities/Timer.cpp" "OpenFIGI/utilities/utils.h" "OpenFIGI/utilities/utils.cpp" "OpenFIGI/utilities/jsonparse.h" "OpenFIGI/utilities/jsonparse.cpp")
+	"OpenFIGI/states/FileState.cpp" "OpenFIGI/utilities/Timer.h" "OpenFIGI/utilities/Timer.cpp")
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET OpenFIGI PROPERTY CXX_STANDARD 20)
@@ -38,10 +39,26 @@ add_library(json_lib INTERFACE)
 target_include_directories(json_lib INTERFACE
     "${CMAKE_CURRENT_SOURCE_DIR}/OpenFIGI/libs/json"
 )
-add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/OpenFIGI/libs/cpr")
+
 
 # TODO: Add tests and install targets if needed.
-target_link_libraries(OpenFIGI PRIVATE json_lib)
+find_package(cpr CONFIG REQUIRED)
 target_link_libraries(OpenFIGI PRIVATE cpr::cpr)
+target_link_libraries(OpenFIGI PRIVATE json_lib)
 
+configure_file(
+  ${CMAKE_CURRENT_SOURCE_DIR}/version.rc
+  ${CMAKE_CURRENT_BINARY_DIR}/version.rc
+  @ONLY
+)
+set(PROJECT_VERSION_MAJOR 0)
+set(PROJECT_VERSION_MINOR 1)
+set(PROJECT_VERSION_PATCH 0)
+set(PROJECT_VERSION_TWEAK 0)
+set(PROJECT_VERSION_STRING "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}.${PROJECT_VERSION_TWEAK}")
+
+
+
+# Add the .rc file to your executable target
+target_sources(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/version.rc)
 

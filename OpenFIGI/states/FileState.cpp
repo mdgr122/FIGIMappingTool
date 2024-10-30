@@ -1,5 +1,4 @@
 #include "FileState.h"
-#include <json.hpp>
 
 
 //FileState::FileState(HWND hwnd)
@@ -46,7 +45,7 @@ std::string FileState::get_open_path()
 			(HANDLE)NULL
 		);
 		std::cout << "FilePath successfully retrieved " << std::endl; //this->ofn.lpstrFile
-		m_open_path = WideToStr(szFile);
+		m_open_path = Utils::GetInstance().wideToStr(szFile);
 		return m_open_path;
 	}
 	std::cerr << "Failed to retrieve FilePath" << std::endl;
@@ -81,7 +80,7 @@ std::string FileState::get_save_path()
 			(HANDLE)NULL
 		);
 		std::cout << "FilePath successfully retrieved " << std::endl; //this->ofn.lpstrFile
-		m_save_path = WideToStr(szFile);
+		m_save_path = Utils::GetInstance().wideToStr(szFile);
 		return m_save_path;
 	}
 	std::cerr << "Failed to retrieve FilePath" << std::endl;
@@ -136,15 +135,6 @@ void FileState::save_file(nlohmann::json response, std::string save_path)
 
 	ofs << response.dump(4);
 
-}
-
-std::string FileState::WideToStr(const std::wstring& wstr)
-{
-	// Uses windows function
-	int size_in_bytes = WideCharToMultiByte(CP_UTF8, 0, &wstr[0], (int)wstr.size(), NULL, 0, NULL, NULL);
-	std::string strTo(size_in_bytes, 0);
-	WideCharToMultiByte(CP_UTF8, 0, &wstr[0], (int)wstr.size(), &strTo[0], size_in_bytes, NULL, NULL);
-	return strTo;
 }
 
 std::string FileState::format_string(const std::string& open_path)

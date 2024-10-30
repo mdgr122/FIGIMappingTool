@@ -11,6 +11,7 @@
 #include <Windows.h>
 #include "FileState.h"
 #include "../Request.h"
+#include "../utilities/utils.h"
 
 class FileState;
 class Request;
@@ -32,8 +33,8 @@ public:
 
 	int get_parent_middle_width(int parent_width, int child_width);
 
-	std::wstring stringToWideString(const std::string& str);
-	std::string WideToStr(const std::wstring& wstr);
+	//std::wstring stringToWideString(const std::string& str);
+	//std::string WideToStr(const std::wstring& wstr);
 
 	HWND GetHWND() const;
 	

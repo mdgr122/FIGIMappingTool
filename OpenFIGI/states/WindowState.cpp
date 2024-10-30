@@ -152,14 +152,14 @@ LRESULT CALLBACK WindowState::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 
                         wchar_t buffer[256];
                         GetWindowText(hEditControl, buffer, 256);
-                        pThis->m_open_path = pThis->WideToStr(buffer);
+                        pThis->m_open_path = Utils::GetInstance().wideToStr(buffer);
                         break;
                     }
                     case ID_SAVE_PATH:
                     {
                         wchar_t buffer[256];
                         GetWindowText(hEditControl, buffer, 256);
-                        pThis->m_save_path = pThis->WideToStr(buffer);
+                        pThis->m_save_path = Utils::GetInstance().wideToStr(buffer);
                         break;
                     }
                     }
@@ -438,7 +438,8 @@ void WindowState::get_open_path()
 {
     //FileState fileState;
     m_open_path = fileState.get_open_path();
-    SetWindowText(this->hwndFilePath, stringToWideString(m_open_path).c_str());
+    //SetWindowText(this->hwndFilePath, stringToWideString(m_open_path).c_str());
+    SetWindowText(this->hwndFilePath, Utils::GetInstance().strToWide(m_open_path).c_str());
     // fileState.read_file();
 
 }
@@ -447,7 +448,8 @@ void WindowState::get_save_path()
 {
     //FileState fileState;
     m_save_path = fileState.get_save_path();
-    SetWindowText(this->hwndSavePath, stringToWideString(m_save_path).c_str());
+    //SetWindowText(this->hwndSavePath, stringToWideString(m_save_path).c_str());
+    SetWindowText(this->hwndSavePath, Utils::GetInstance().strToWide(m_save_path).c_str());
     //fileState.read_file();
     //fileState.save_file(request.GetResponse());
 
@@ -486,25 +488,25 @@ int WindowState::get_parent_middle_width(int parent_width, int child_width)
     return ((parent_width - child_width) / 2);
 }
 
-
-std::wstring WindowState::stringToWideString(const std::string& str)
-{
-    int size_needed = MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, NULL, 0);
-    std::wstring wstr(size_needed, 0);
-    MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, &wstr[0], size_needed);
-    return wstr;
-}
+//
+//std::wstring WindowState::stringToWideString(const std::string& str)
+//{
+//    int size_needed = MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, NULL, 0);
+//    std::wstring wstr(size_needed, 0);
+//    MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, &wstr[0], size_needed);
+//    return wstr;
+//}
 
 HWND WindowState::GetHWND() const
 {
     return hwnd;
 }
 
-std::string WindowState::WideToStr(const std::wstring& wstr)
-{
-    // Uses windows function
-    int size_in_bytes = WideCharToMultiByte(CP_UTF8, 0, &wstr[0], (int)wstr.size(), NULL, 0, NULL, NULL);
-    std::string strTo(size_in_bytes, 0);
-    WideCharToMultiByte(CP_UTF8, 0, &wstr[0], (int)wstr.size(), &strTo[0], size_in_bytes, NULL, NULL);
-    return strTo;
-}
+//std::string WindowState::WideToStr(const std::wstring& wstr)
+//{
+//    // Uses windows function
+//    int size_in_bytes = WideCharToMultiByte(CP_UTF8, 0, &wstr[0], (int)wstr.size(), NULL, 0, NULL, NULL);
+//    std::string strTo(size_in_bytes, 0);
+//    WideCharToMultiByte(CP_UTF8, 0, &wstr[0], (int)wstr.size(), &strTo[0], size_in_bytes, NULL, NULL);
+//    return strTo;
+//}
