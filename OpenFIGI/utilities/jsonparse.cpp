@@ -1,6 +1,6 @@
 #include "jsonparse.h"
 
-JsonParse::JsonParse() : m_json_data{}
+JsonParse::JsonParse() : m_json_data{}, m_csv_vec{}
 {
 }
 
@@ -8,19 +8,20 @@ JsonParse::~JsonParse()
 {
 }
 
-void JsonParse::read_json()
+void JsonParse::read_json(nlohmann::json response)
 {
-	std::vector<std::string> vec{};
-
-	std::string json_path{};
-	//json_path = "C:/Users/MDaki/source/repos/OpenFIGI/OpenFIGI/tests/Testing_2.json";
-	json_path = "C:/Temp1/UnstructuredData.json";
-
-	std::ifstream ifs(json_path);
-
-	m_json_data = nlohmann::json::parse(ifs);
 
 
+	//std::string json_path{};
+	//////json_path = "C:/Users/MDaki/source/repos/OpenFIGI/OpenFIGI/tests/Testing_2.json";
+	//json_path = "C:/Temp1/UnstructuredData.json";
+
+	//std::ifstream ifs(json_path);
+
+	//m_json_data = nlohmann::json::parse(ifs);
+	////m_json_data = nlohmann::json::parse(response);
+
+	m_json_data = response;
 	int t{};
 	nlohmann::json json_obj = m_json_data[t];
 	nlohmann::json json_data_obj = m_json_data[t]["data"];
@@ -65,8 +66,7 @@ void JsonParse::read_json()
 		}
 
 	}
-	std::cout << std::endl << std::endl << "###############################################" << std::endl << std::endl;
-	vec.push_back(header_line);
+	m_csv_vec.push_back(header_line);
 
 
 	size_t json_obj_count = 0;
@@ -95,7 +95,7 @@ void JsonParse::read_json()
 				{
 					if (row_line.size() > 99)
 					{
-						vec.push_back(row_line);
+						m_csv_vec.push_back(row_line);
 
 					}
 				}
@@ -140,4 +140,14 @@ void JsonParse::read_json()
 		t++;
 	}
 
+
+}
+
+std::vector<std::string> JsonParse::get_vec()
+{
+	if (!m_csv_vec.empty())
+	{
+		return m_csv_vec;
+	}
+	return m_csv_vec;
 }

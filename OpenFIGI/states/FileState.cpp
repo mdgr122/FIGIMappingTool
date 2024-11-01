@@ -8,8 +8,9 @@ FileState::FileState()
 	, m_open_path{}
 	, m_save_path{}
 	, m_input_vec{}
+	, ofn_open{}
+	, ofn_save{}
 {
-	
 }
 
 FileState::~FileState()
@@ -60,7 +61,7 @@ std::string FileState::get_save_path()
 	ofn_save.lpstrFile = szFile;
 	ofn_save.lpstrFile[0] = '\0'; // Set lpstrFile[0] to '\0' so that GetOpenFileName does not use the contents of szFile to initialize itself.
 	ofn_save.nMaxFile = sizeof(szFile);
-	ofn_save.lpstrFilter = L"Text Files (*.txt)\0*.txt\0JSON Files (*.json)\0*.json\0All Files (*.*)\0*.*\0"; //L".json;.txt";
+	ofn_save.lpstrFilter = L"CSV Files (*.csv)\0*.csv\0JSON Files (*.json)\0*.json\0Text Files (*.txt)\0*.txt\0All Files (*.*)\0*.*\0"; //L".json;.txt";
 	ofn_save.nFilterIndex = 1;
 	ofn_save.lpstrFileTitle = NULL;
 	ofn_save.nMaxFileTitle = 0;
@@ -135,6 +136,19 @@ void FileState::save_file(nlohmann::json response, std::string save_path)
 
 	ofs << response.dump(4);
 
+}
+
+void FileState::save_csv_file(std::vector<std::string> vec, std::string save_path)
+{
+	std::ofstream ofs(save_path);
+
+
+
+	for (const auto& elem : vec)
+	{
+		std::cout << elem << std::endl;
+		ofs << elem << '\n';
+	}
 }
 
 std::string FileState::format_string(const std::string& open_path)

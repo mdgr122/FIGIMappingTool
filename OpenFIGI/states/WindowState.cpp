@@ -4,11 +4,14 @@
 
 // Define the window class name and window title at the top for consistency
 const wchar_t CLASS_NAME[] = L"OpenFIGILookup";
+const wchar_t ABOUT_CLASS_NAME[] = L"AboutPopupWinudow";
 const wchar_t WINDOW_TITLE[] = L"OpenFIGI Lookup";
 
-WindowState::WindowState(HINSTANCE hInstance, int nCmdShow, FileState& fileState, Request& request)
+
+WindowState::WindowState(HINSTANCE hInstance, int nCmdShow, FileState& fileState, Request& request, JsonParse& jsonParse)
     : hInstance(hInstance)
     , hwnd{nullptr}
+    , m_hwnd{nullptr}
     , hwndFileButton{nullptr}
     , hwndRequestButton{nullptr}
     , hwndSaveButton{nullptr}
@@ -16,8 +19,8 @@ WindowState::WindowState(HINSTANCE hInstance, int nCmdShow, FileState& fileState
     , hwndFilePath{nullptr}
     , hwndSavePath{nullptr}
     , hwndWaitingMsg{nullptr}
-    //, hdcEdit{ nullptr }
-    //, hdcStatic{nullptr}
+    , hwndAboutButton{nullptr}
+    , hwndAboutPopup{nullptr}
     , hbrBackground{nullptr}
     , hBackground{nullptr}
     , nCmdShow(nCmdShow)
@@ -27,8 +30,9 @@ WindowState::WindowState(HINSTANCE hInstance, int nCmdShow, FileState& fileState
     , m_save_path{}
     , fileState(fileState)
     , request(request)
-{
+    , jsonParse(jsonParse)
 
+{
 
     nWidth = GetSystemMetrics(SM_CXSCREEN);
     nHeight = GetSystemMetrics(SM_CYSCREEN);
@@ -71,159 +75,196 @@ LRESULT CALLBACK WindowState::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
     // The pointer is retrieved with the GetWindowLongPtr which allows the callback function to gain acess to the instance of the class.
     // Once the instance is retrieved, we can use it to call non-static member functions and access instance-specific data.
 
+    WindowState *pThis = NULL;
+    static bool aboutClassRegistered = false;
+
     // Retrieve the instance of WindowState from the window's user data
-    WindowState* pThis = reinterpret_cast<WindowState*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
+    //WindowState* pThis = reinterpret_cast<WindowState*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
+
+    if (uMsg == WM_NCCREATE)
+    {
+        CREATESTRUCT* pCreate = (CREATESTRUCT*)lParam;
+        pThis = (WindowState*)pCreate->lpCreateParams;
+        SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)pThis);
+
+        pThis->m_hwnd = hwnd;
+    }
+    else
+    {
+        pThis = (WindowState*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
+    }
 
     if (pThis)
     {
         switch (uMsg)
         {
-        case WM_COMMAND:
-        {
-            switch (LOWORD(wParam))
+            case WM_COMMAND:
             {
-            case ID_BUTTON_FILE_PATH:
-            {
-                pThis->get_open_path(); // Calling non-static member function
-                break;
-            }
-            case ID_BUTTON_SAVE_PATH:
-            {
-                pThis->get_save_path();
-                break;
-            }
-            case ID_BUTTON_SAVE:
-            {
-                if (pThis->m_save_path.empty())
+                switch (LOWORD(wParam))
                 {
-                    SetWindowText(pThis->hwndWaitingMsg, L"");
-                    SetWindowText(pThis->hwndWaitingMsg, L"Save Path Empty!");
-                    break;
-                }
-
-                if ((pThis->request.GetResponse()).empty())
-                {
-                    SetWindowText(pThis->hwndWaitingMsg, L"");
-                    SetWindowText(pThis->hwndWaitingMsg, L"Nothing to Save");
-                    break;
-                }
-
-                pThis->save_output();
-                SetWindowText(pThis->hwndWaitingMsg, L"");
-                SetWindowText(pThis->hwndWaitingMsg, L"File Saved");
-                break;
-            }
-            case ID_BUTTON_REQUEST:
-            {
-                if (pThis->m_open_path.empty())
-                {
-                    SetWindowText(pThis->hwndWaitingMsg, L"");
-                    SetWindowText(pThis->hwndWaitingMsg, L"Input Path Empty!");
-                    break;
-                }
-                bool flag = true;
-                while (flag)
-                {
-                    SetWindowText(pThis->hwndWaitingMsg, L"Processing...");
-                    pThis->make_request();
-                    flag = false;
-                }
-                SetWindowText(pThis->hwndWaitingMsg, L"");
-                SetWindowText(pThis->hwndWaitingMsg, L"Complete!");
-                break;
-            }
-            }
-            switch (HIWORD(wParam))
-            {
-                case EN_KILLFOCUS:
-                {
-                    HWND hEditControl = (HWND)lParam;
-                    switch (LOWORD(wParam))
+                    case ID_BUTTON_FILE_PATH:
                     {
-                    case ID_FILE_PATH:
-                    {
-                       /*
-                       int GetWindowTextA(
-                            [in]  HWND  hWnd,
-                            [out] LPSTR lpString,
-                            [in]  int   nMaxCount
-                        );
-                        */
-
-                        wchar_t buffer[256];
-                        GetWindowText(hEditControl, buffer, 256);
-                        pThis->m_open_path = Utils::GetInstance().wideToStr(buffer);
+                        pThis->get_open_path(); // Calling non-static member function
                         break;
                     }
-                    case ID_SAVE_PATH:
+                    case ID_BUTTON_SAVE_PATH:
                     {
-                        wchar_t buffer[256];
-                        GetWindowText(hEditControl, buffer, 256);
-                        pThis->m_save_path = Utils::GetInstance().wideToStr(buffer);
+                        pThis->get_save_path();
                         break;
                     }
+                    case ID_BUTTON_SAVE:
+                    {
+                        if (pThis->m_save_path.empty())
+                        {
+                            SetWindowText(pThis->hwndWaitingMsg, L"");
+                            SetWindowText(pThis->hwndWaitingMsg, L"Save Path Empty!");
+                            break;
+                        }
+
+                        if ((pThis->request.GetResponse()).empty())
+                        {
+                            SetWindowText(pThis->hwndWaitingMsg, L"");
+                            SetWindowText(pThis->hwndWaitingMsg, L"Nothing to Save");
+                            break;
+                        }
+                        if (pThis->save_ftype_csv())
+                        {
+                            pThis->save_output_csv();
+                            break;
+                        }
+                        else
+                        {
+                            pThis->save_output();
+                            break;
+                        }
+                        SetWindowText(pThis->hwndWaitingMsg, L"");
+                        SetWindowText(pThis->hwndWaitingMsg, L"File Saved");
+                        break;
                     }
-                    break;
+                    case ID_BUTTON_REQUEST:
+                    {
+                        if (pThis->m_open_path.empty())
+                        {
+                            SetWindowText(pThis->hwndWaitingMsg, L"");
+                            SetWindowText(pThis->hwndWaitingMsg, L"Input Path Empty!");
+                            break;
+                        }
+                        bool flag = true;
+                        while (flag)
+                        {
+                            SetWindowText(pThis->hwndWaitingMsg, L"Processing...");
+                            pThis->make_request();
+                            flag = false;
+                        }
+                        SetWindowText(pThis->hwndWaitingMsg, L"");
+                        SetWindowText(pThis->hwndWaitingMsg, L"Complete!");
+                        break;
+                    }
+                    case ID_BUTTON_ABOUT:
+                    {
+                        int xPos = (pThis->nWidth - pThis->PARENT_WINDOW_WIDTH) / 2;
+                        int yPos = (pThis->nHeight - pThis->PARENT_WINDOW_HEIGHT) / 2;
+
+
+                        if (!aboutClassRegistered) {
+                            pThis->RegisterAboutWindowClass(pThis->hInstance);
+                            aboutClassRegistered = true;
+                        }
+                        //pThis->hwndAboutPopup = CreateWindowEx(NULL, ABOUT_CLASS_NAME, L"", WS_POPUP | WS_BORDER | WS_SYSMENU, xPos + 150, yPos + 30, 300, 200, pThis->hwnd, NULL, GetModuleHandle(NULL), NULL);
+                        pThis->hwndAboutPopup = CreateWindowEx(NULL, ABOUT_CLASS_NAME, L"", WS_POPUP | WS_BORDER | WS_SYSMENU, xPos + 150, yPos + 30, 300, 200, pThis->hwnd, NULL, pThis->hInstance, NULL);
+                        ShowWindow(pThis->hwndAboutPopup, SW_SHOW);
+
+                    }
                 }
+                switch (HIWORD(wParam))
+                {
+                    case EN_KILLFOCUS:
+                    {
+                        HWND hEditControl = (HWND)lParam;
+                        switch (LOWORD(wParam))
+                        {
+                            case ID_FILE_PATH:
+                            {
+                               /*
+                               int GetWindowTextA(
+                                    [in]  HWND  hWnd,
+                                    [out] LPSTR lpString,
+                                    [in]  int   nMaxCount
+                                );
+                                */
+
+                                wchar_t buffer[256];
+                                GetWindowText(hEditControl, buffer, 256);
+                                pThis->m_open_path = Utils::GetInstance().wideToStr(buffer);
+                                break;
+                            }
+                            case ID_SAVE_PATH:
+                            {
+                                wchar_t buffer[256];
+                                GetWindowText(hEditControl, buffer, 256);
+                                pThis->m_save_path = Utils::GetInstance().wideToStr(buffer);
+                                break;
+                            }
+                        }
+                        break;
+                    }
+                }
+                break;
             }
-            break;
-        }
-        case WM_CREATE:
-            // Create a solid brush with your desired color, e.g., light gray.
-            pThis->hbrBackground = CreateSolidBrush(RGB(240, 240, 240));
-            break;
-        case WM_CTLCOLOREDIT:
-        {   
-            HWND hEditControl = (HWND)lParam;
-            HDC hdcEdit = (HDC)wParam; // Handle to the device context of the control
-            //HWND hEditControl = HWND(lParam);
-            //pThis->hdcEdit = (HDC)wParam;   // Handle to the device context of the control
-            if (hEditControl == pThis->hwndFilePath)
+            case WM_CREATE:
             {
-                // Set the text and background colors
-                SetTextColor(hdcEdit, RGB(0, 0, 0));        // Text color (black)
-                SetBkColor(hdcEdit, RGB(169, 169, 169));    // Background color (light gray)
+                CREATESTRUCT* pCreate = reinterpret_cast<CREATESTRUCT*>(lParam);
+                // Create a solid brush with your desired color, e.g., light gray.
+                pThis->hbrBackground = CreateSolidBrush(RGB(240, 240, 240));
+                break;
             }
-            else if (hEditControl == pThis->hwndSavePath)
+            case WM_CTLCOLOREDIT:
+            {   
+                HWND hEditControl = (HWND)lParam;
+                HDC hdcEdit = (HDC)wParam; // Handle to the device context of the control
+                //HWND hEditControl = HWND(lParam);
+                //pThis->hdcEdit = (HDC)wParam;   // Handle to the device context of the control
+                if (hEditControl == pThis->hwndFilePath)
+                {
+                    // Set the text and background colors
+                    SetTextColor(hdcEdit, RGB(0, 0, 0));        // Text color (black)
+                    SetBkColor(hdcEdit, RGB(169, 169, 169));    // Background color (light gray)
+                }
+                else if (hEditControl == pThis->hwndSavePath)
+                {
+                    // Set the text and background colors
+                    SetTextColor(hdcEdit, RGB(0, 0, 0));        // Text color (black)
+                    SetBkColor(hdcEdit, RGB(169, 169, 169));    // Background color (light gray)
+                }
+
+                // Return the background brush to paint the control's background
+                return (INT_PTR)pThis->hbrBackground;
+            }
+            case WM_CTLCOLORSTATIC:
             {
-                // Set the text and background colors
-                SetTextColor(hdcEdit, RGB(0, 0, 0));        // Text color (black)
-                SetBkColor(hdcEdit, RGB(169, 169, 169));    // Background color (light gray)
+                HWND hStaticControl = (HWND)lParam;
+                HDC hdcStatic = (HDC)wParam;
+
+                if (hStaticControl == pThis->hwndWaitingMsg)
+                {
+                    SetBkMode(hdcStatic, TRANSPARENT);
+                }
+                return (INT_PTR)GetStockObject(WHITE_BRUSH);
             }
-
-            // Return the background brush to paint the control's background
-            return (INT_PTR)pThis->hbrBackground;
-        }
-        case WM_CTLCOLORSTATIC:
-        {
-            HWND hStaticControl = (HWND)lParam;
-            HDC hdcStatic = (HDC)wParam;
-
-            if (hStaticControl == pThis->hwndWaitingMsg)
+            case WM_DESTROY:
             {
-                SetBkMode(hdcStatic, TRANSPARENT);
+                PostQuitMessage(0);
+                return 0;
             }
-            return (INT_PTR)GetStockObject(WHITE_BRUSH);
-        }
-        case WM_DESTROY:
-        {
-            PostQuitMessage(0);
-            return 0;
-        }
-        case WM_PAINT:
-        {
-            PAINTSTRUCT ps;
+            case WM_PAINT:
+            {
+                PAINTSTRUCT ps;
+                HDC hdc;
 
-            // The BeginPaint function fills in the PAINTSTRUCT structure with information on the repaint request. The current update region is given in the rcPaint member of PAINTSTRUCT.
-            HDC hdc = BeginPaint(hwnd, &ps);
-
-            // All painting occurs here, between BeginPaint and EndPaint.
-            // &ps.rcPaint is the coords of the rectangle to fill.
-            FillRect(hdc, &ps.rcPaint, (HBRUSH)(COLOR_WINDOW + 1));
-
-            // The EndPaint function clears the update region, which signals to Windows that the window has completed painting itself.
-            EndPaint(hwnd, &ps);
-        }
+                hdc = BeginPaint(hwnd, &ps);                                // The BeginPaint function fills in the PAINTSTRUCT structure with information on the repaint request. The current update region is given in the rcPaint member of PAINTSTRUCT.
+                FillRect(hdc, &ps.rcPaint, (HBRUSH)(COLOR_WINDOW + 1));     // All painting occurs here, between BeginPaint and EndPaint. &ps.rcPaint is the coords of the rectangle to fill
+                EndPaint(hwnd, &ps);                                        // The EndPaint function clears the update region, which signals to Windows that the window has completed painting 
+            }
         return 0;
 
         default:
@@ -233,18 +274,53 @@ LRESULT CALLBACK WindowState::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
     return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
+LRESULT WindowState::AboutWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+
+    HWND hwndCloseButton = NULL;
+
+    switch (uMsg)
+        {
+        case WM_CREATE:
+        {
+            hwndCloseButton = CreateWindowEx(NULL, L"BUTTON", L"X",  WS_CHILD | WS_VISIBLE | BS_FLAT | SS_CENTER, 5, 0, 16, 14, hwnd, (HMENU)ID_CLOSE_BUTTON, ((LPCREATESTRUCT)lParam)->hInstance, NULL);
+            break;
+        }
+        case WM_COMMAND:
+        {
+            if (LOWORD(wParam) == ID_CLOSE_BUTTON) 
+            {
+                DestroyWindow(hwndCloseButton);
+                hwndCloseButton = NULL;
+            }
+            break;
+        }
+        case WM_DESTROY:
+        {
+            //hwndCloseButton = nullptr; // Reset the handle
+            PostQuitMessage(0);
+            break;
+        }
+        default:
+        {
+            return DefWindowProc(hwnd, uMsg, wParam, lParam);
+        }
+    }
+
+
+    return 0;
+}
+
 bool WindowState::RegisterWindowClass()
 {
     // WNDCLASSW Struct - Contains the window class attributes that are registered by the RegisterClass function.
     WNDCLASS wc = { };
 
-    // When we assign WindowState::WindowProc to wc.lpfnWndProc, we are taking the address of the function (implicitly) and storing it in a variable of type WNDPROC.
-    // In C++, functions decay into pointers to themselves when assigned or passed as arguments, so the & is implied. Thus, the compiler treats WindowState::WindowProc as a pointer to the function.
-    // In other words, because functions decay into pointers when assigned or passed as args, we do not need to assign the pointer to the address-of WindowState::WindowProc function, but we can if we want.
-    // I.e., we can have wc.lpfnWndProc = &WindowState::WindowProc; instead of wc.lpfnWndProc = WindowState::WindowProc;
     wc.lpfnWndProc = WindowState::WindowProc;
     wc.hInstance = hInstance;
     wc.lpszClassName = CLASS_NAME;
+    wc.hCursor = LoadCursor(NULL, IDC_ARROW);
+    //wc.style = CS_SAVEBITS;
 
     if (!RegisterClass(&wc))
     {
@@ -255,149 +331,66 @@ bool WindowState::RegisterWindowClass()
     return true;
 }
 
+
 bool WindowState::CreateMainWindow()
 {
-    //HWND CreateWindowExA(
-    //    [in]           DWORD     dwExStyle,
-    //    [in, optional] LPCSTR    lpClassName,
-    //    [in, optional] LPCSTR    lpWindowName,
-    //    [in]           DWORD     dwStyle,
-    //    [in]           int       X,
-    //    [in]           int       Y,
-    //    [in]           int       nWidth,
-    //    [in]           int       nHeight,
-    //    [in, optional] HWND      hWndParent,
-    //    [in, optional] HMENU     hMenu,
-    //    [in, optional] HINSTANCE hInstance,
-    //    [in, optional] LPVOID    lpParam
-    //);
 
     int xPos = (nWidth - PARENT_WINDOW_WIDTH) / 2;
     int yPos = (nHeight - PARENT_WINDOW_HEIGHT) / 2;
 
-    hwnd = CreateWindowEx(
-        0,                      // Optional window styles.
-        CLASS_NAME,             // Window class
-        WINDOW_TITLE,           // Window text
-        //WS_OVERLAPPEDWINDOW & ~WS_THICKFRAME & ~WS_MAXIMIZEBOX,    // Window style
-        WS_OVERLAPPEDWINDOW & ~WS_THICKFRAME & ~WS_MAXIMIZEBOX,
-        xPos,          // X
-        yPos,          // Y
-        PARENT_WINDOW_WIDTH,          // nWidth
-        PARENT_WINDOW_HEIGHT,          // nHeight
-        NULL,                   // Parent window    
-        NULL,                   // Menu
-        hInstance,              // Instance handle
-        NULL                    // Additional application data
-    );
+    DWORD default_btn_style = WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON;
+
+
+    // Main Window
+    hwnd = CreateWindowEx(NULL, CLASS_NAME, WINDOW_TITLE, WS_OVERLAPPEDWINDOW & ~WS_THICKFRAME & ~WS_MAXIMIZEBOX, xPos, yPos, PARENT_WINDOW_WIDTH, PARENT_WINDOW_HEIGHT, NULL, NULL, hInstance, this);
+    //hwnd = CreateWindowEx(NULL, CLASS_NAME, WINDOW_TITLE, WS_OVERLAPPEDWINDOW & ~WS_THICKFRAME & ~WS_MAXIMIZEBOX, xPos, yPos, PARENT_WINDOW_WIDTH, PARENT_WINDOW_HEIGHT, NULL, NULL, hInstance, NULL);
+
+
+    // Button Windows
+    hwndRequestButton = CreateWindowEx(NULL, L"BUTTON", L"Request", default_btn_style, 2, 100, 630, 50, hwnd, (HMENU)ID_BUTTON_REQUEST, hInstance, NULL);
+    hwndFileButton = CreateWindowEx(NULL, L"BUTTON", L"FILE", default_btn_style, 550, 10, 50, 20, hwnd, (HMENU)ID_BUTTON_FILE_PATH, hInstance, NULL);
+    hwndSaveButton = CreateWindowEx(NULL, L"BUTTON", L"Save", default_btn_style, 550, 50, 50, 20, hwnd, (HMENU)ID_BUTTON_SAVE, hInstance, NULL);
+    hwndSaveButton2 = CreateWindowEx(NULL, L"BUTTON", L":", default_btn_style, 601, 50, 16, 20, hwnd, (HMENU)ID_BUTTON_SAVE_PATH, hInstance, NULL);
+    hwndAboutButton = CreateWindowEx(NULL, L"BUTTON", L"About", WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_FLAT, 2, 190, 36, 14, hwnd, (HMENU)ID_BUTTON_ABOUT, hInstance, NULL);
     
-    hwndFileButton = CreateWindowEx(
-        0,                      // Optional window styles.
-        L"BUTTON",              // Window class
-        L"File",                // Window text
-        WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,    // Window style
-        550,                    // X
-        10,                     // Y
-        50,                     // nWidth
-        20,                     // nHeight
-        hwnd,                   // Parent window    
-        (HMENU) ID_BUTTON_FILE_PATH, // Menu
-        hInstance,              // Instance handle
-        NULL
-    );
 
-    hwndFilePath = CreateWindowEx(
-        0,                      // Optional window styles.
-        L"EDIT",                // Window class
-        L"",                    // Window text
-        WS_TABSTOP | WS_VISIBLE | WS_CHILD | WS_BORDER  | ES_LEFT | ES_AUTOHSCROLL,    // Window style
-        10,                     // X
-        10,                     // Y
-        530,                    // nWidth
-        20,                     // nHeight
-        hwnd,                   // Parent window    
-        (HMENU) ID_FILE_PATH,   // Menu
-        hInstance,//(HINSTANCE)GetWindowLongPtr(hwnd, GWLP_HINSTANCE),              // Instance handle
-        NULL
-    );
+    // Path windows
+    hwndFilePath = CreateWindowEx(NULL, L"EDIT", L"", WS_TABSTOP | WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT | ES_AUTOHSCROLL, 10, 10, 530, 20, hwnd, (HMENU)ID_FILE_PATH, hInstance, NULL);
+    hwndSavePath = CreateWindowEx(NULL, L"EDIT", L"", WS_TABSTOP | WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT | ES_AUTOHSCROLL, 10, 50, 530, 20, hwnd, (HMENU)ID_SAVE_PATH, hInstance, NULL);
 
-    hwndRequestButton = CreateWindowEx(
-        0,                      // Optional window styles.
-        L"BUTTON",              // Window class
-        L"Request",                // Window text
-        WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,    // Window style
-        2,                    // X
-        100,                     // Y
-        630,                     // nWidth
-        50,                     // nHeight
-        hwnd,                   // Parent window    
-        (HMENU) ID_BUTTON_REQUEST, // Menu
-        hInstance,              // Instance handle
-        NULL
-    );
+    // Static Message Window
+    hwndWaitingMsg = CreateWindowEx(NULL, L"STATIC", L"", WS_TABSTOP | WS_VISIBLE | WS_CHILD | SS_CENTER, get_parent_middle_width(PARENT_WINDOW_WIDTH, 200), 175, 200, 20, hwnd, (HMENU)ID_STATIC_MSG, hInstance, NULL);
 
-    hwndSaveButton = CreateWindowEx(
-        0,                      // Optional window styles.
-        L"BUTTON",              // Window class
-        L"Save",                // Window text
-        WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,    // Window style
-        550,                    // X
-        50,                     // Y
-        50,                     // nWidth
-        20,                     // nHeight
-        hwnd,                   // Parent window    
-        (HMENU) ID_BUTTON_SAVE,                   // Menu
-        hInstance,              // Instance handle
-        NULL
-    );
+
+    HFONT hFontAbout = CreateFont(
+        12,                 // Height (0 for default height)
+        0,                 // Width (0 for default width based on height)
+        0,                 // Escapement angle (0 for normal orientation)
+        0,                 // Orientation angle (0 for normal orientation)
+        FW_NORMAL,          // Weight (FW_DONTCARE lets the system choose an appropriate weight) 700 for bold
+        FALSE,             // Italic (FALSE for no italic)
+        FALSE,             // Underline (FALSE for no underline)
+        FALSE,             // Strikeout (FALSE for no strikeout)
+        DEFAULT_CHARSET,   // Character set (DEFAULT_CHARSET for default character set)
+        OUT_DEFAULT_PRECIS,// Output precision (OUT_DEFAULT_PRECIS for default)
+        CLIP_DEFAULT_PRECIS,// Clipping precision (CLIP_DEFAULT_PRECIS for default)
+        DEFAULT_QUALITY,   // Output quality (DEFAULT_QUALITY for default)
+        DEFAULT_PITCH | FF_SWISS, // Pitch and family (DEFAULT_PITCH and FF_DONTCARE for default)
+        L"Microsoft Sans Serif");              // Font family name ("" or `NULL` for system default font)
+
+
     
-    hwndSaveButton2 = CreateWindowEx(
-        0,                      // Optional window styles.
-        L"BUTTON",              // Window class
-        L":",                // Window text
-        WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,    // Window style
-        601,                    // X
-        50,                     // Y
-        16,                     // nWidth
-        20,                     // nHeight
-        hwnd,                   // Parent window    
-        (HMENU) ID_BUTTON_SAVE_PATH,                   // Menu
-        hInstance,              // Instance handle
-        NULL
-    );
 
-    hwndSavePath = CreateWindowEx(
-        0,                      // Optional window styles.
-        L"EDIT",                // Window class
-        L"",                    // Window text
-        WS_TABSTOP | WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT | ES_AUTOHSCROLL,    // Window style
-        10,                     // X
-        50,                     // Y
-        530,                    // nWidth
-        20,                     // nHeight
-        hwnd,                   // Parent window    
-        (HMENU) ID_SAVE_PATH,   // Menu
-        hInstance,              // Instance handle
-        NULL
-    );
-
-    hwndWaitingMsg = CreateWindowEx(
-        0,                      // Optional window styles.
-        L"STATIC",              // Window class
-        L"",                // Window text
-        WS_TABSTOP | WS_VISIBLE | WS_CHILD | SS_CENTER, //| SS_BLACKFRAME,    // Window style
-        get_parent_middle_width(PARENT_WINDOW_WIDTH, 200),                    // X
-        175,                     // Y
-        200,                     // nWidth
-        20,                     // nHeight
-        hwnd,                   // Parent window    
-        (HMENU) ID_STATIC_MSG,                   // Menu
-        hInstance,              // Instance handle
-        NULL
-    );
+    //pState = reinterpret_cast<WindowState*>(this->pCreate->lpCreateParams);
 
     // Store the pointer to the current instance in the HWND
-    SetWindowLongPtr(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));
+    //SetWindowLongPtr(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));
+
+
+    SendMessage(hwndAboutButton, WM_SETFONT, (WPARAM)hFontAbout, TRUE);
+    //SetWindowTheme(hwndAboutButton, L"Explorer", NULL); // Applies the Windows Explorer style
+    //SendMessage(hwndAboutButton, BCM_SETSHIELD, TRUE, 0);
+
 
     if (hwnd == NULL)
     {
@@ -480,7 +473,35 @@ void WindowState::make_request()
 void WindowState::save_output()
 {
     //GetWindowText(this->hwndSavePath, stringToWideString(m_save_path).c_str());
+ 
     fileState.save_file(request.GetResponse(), m_save_path);
+}
+
+void WindowState::save_output_csv()
+{
+    jsonParse.read_json(request.GetResponse());
+    fileState.save_csv_file(jsonParse.get_vec(), m_save_path);
+}
+
+bool WindowState::save_ftype_csv()
+{
+    std::string ext{};
+    bool flag = false;
+    for (size_t i = 0; i < m_save_path.size(); i++)
+    {
+        char c = m_save_path[i];
+        if (c == '.')
+        {
+            flag = true;
+        }
+        if (flag == true)
+        {
+            ext.push_back(c);
+        }
+    }
+    if (ext == ".csv")
+        return true;
+    return false;
 }
 
 int WindowState::get_parent_middle_width(int parent_width, int child_width)
@@ -499,7 +520,32 @@ int WindowState::get_parent_middle_width(int parent_width, int child_width)
 
 HWND WindowState::GetHWND() const
 {
+
     return hwnd;
+}
+
+bool WindowState::RegisterAboutWindowClass(HINSTANCE hInstance)
+{
+    // WNDCLASSW Struct - Contains the window class attributes that are registered by the RegisterClass function.
+    WNDCLASS wc = { };
+
+    // When we assign WindowState::WindowProc to wc.lpfnWndProc, we are taking the address of the function (implicitly) and storing it in a variable of type WNDPROC.
+    // In C++, functions decay into pointers to themselves when assigned or passed as arguments, so the & is implied. Thus, the compiler treats WindowState::WindowProc as a pointer to the function.
+    // In other words, because functions decay into pointers when assigned or passed as args, we do not need to assign the pointer to the address-of WindowState::WindowProc function, but we can if we want.
+    // I.e., we can have wc.lpfnWndProc = &WindowState::WindowProc; instead of wc.lpfnWndProc = WindowState::WindowProc;
+    wc.lpfnWndProc = WindowState::AboutWindowProc; // Pointer to the windo procedure.
+    wc.hInstance = hInstance; // Handle to the instance that contains the window procedure.
+    wc.lpszClassName = ABOUT_CLASS_NAME; // Pointer to a null-terminated string or is an atom. If string, it specifies the class name. Max length of 256.
+    wc.hCursor = LoadCursor(NULL, IDC_ARROW);
+    //wc.style = CS_SAVEBITS;
+
+    if (!RegisterClass(&wc))
+    {
+        std::cerr << "Failed to register the About window class! Error: " << GetLastError() << std::endl;
+        return false;
+    }
+    static bool aboutClassRegistered = true;
+    return true;
 }
 
 //std::string WindowState::WideToStr(const std::wstring& wstr)
