@@ -11,22 +11,10 @@ JsonParse::~JsonParse()
 void JsonParse::read_json(nlohmann::json response)
 {
 
-
-	//std::string json_path{};
-	//////json_path = "C:/Users/MDaki/source/repos/OpenFIGI/OpenFIGI/tests/Testing_2.json";
-	//json_path = "C:/Temp1/UnstructuredData.json";
-
-	//std::ifstream ifs(json_path);
-
-	//m_json_data = nlohmann::json::parse(ifs);
-	////m_json_data = nlohmann::json::parse(response);
-
 	m_json_data = response;
 	int t{};
 	nlohmann::json json_obj = m_json_data[t];
 	nlohmann::json json_data_obj = m_json_data[t]["data"];
-	//std::cout << json_data_obj << std::endl;
-
 
 	size_t main_counter = 0;
 	size_t counter = 0;
@@ -105,7 +93,14 @@ void JsonParse::read_json(nlohmann::json response)
 				{
 					if (i.key() == "data")
 					{
-						row_line.append(nel.value());
+						if (!nel.value().empty())
+						{
+							row_line.append(nel.value());
+						}
+						else
+						{
+							row_line.append("");
+						}
 						row_line.append(",");
 						child_counter++;
 					}

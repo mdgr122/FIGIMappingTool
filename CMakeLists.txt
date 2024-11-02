@@ -19,10 +19,17 @@ add_executable (
 	"OpenFIGI/main.cpp"  
 	"OpenFIGI/Request.h"
 	"OpenFIGI/Request.cpp"
+	"OpenFIGI/states/FileState.h" 
+	"OpenFIGI/states/FileState.cpp" 
+	"OpenFIGI/utilities/Timer.h" 
+	"OpenFIGI/utilities/Timer.cpp" 
+	"OpenFIGI/utilities/utils.h" 
+	"OpenFIGI/utilities/utils.cpp" 
+	"OpenFIGI/utilities/jsonparse.h" 
+	"OpenFIGI/utilities/jsonparse.cpp" 
 	"OpenFIGI/states/WindowState.h"
 	"OpenFIGI/states/WindowState.cpp"
-	"OpenFIGI/states/FileState.h" 
-	"OpenFIGI/states/FileState.cpp" "OpenFIGI/utilities/Timer.h" "OpenFIGI/utilities/Timer.cpp" "OpenFIGI/utilities/utils.h" "OpenFIGI/utilities/utils.cpp" "OpenFIGI/utilities/jsonparse.h" "OpenFIGI/utilities/jsonparse.cpp" "OpenFIGI/states/BaseWindow.h" )
+	"OpenFIGI/states/BaseWindow.h")
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET OpenFIGI PROPERTY CXX_STANDARD 20)

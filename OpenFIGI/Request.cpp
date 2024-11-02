@@ -268,11 +268,6 @@ bool Request::Validate_CUSIP(std::string& identifier)
 void Request::GetVec()
 {
 	m_Identifiers = m_fileState.GetVec();
-
-	for (const auto& elem : m_Identifiers)
-	{
-		std::cout << elem << std::endl;
-	}
 }
 
 nlohmann::json Request::GetResponse()

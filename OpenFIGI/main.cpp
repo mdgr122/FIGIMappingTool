@@ -15,6 +15,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
     FileState fileState;
     Request request(fileState);
     JsonParse jsonParse;
+    HWND hwnd = NULL;
 
     if (AllocConsole()) {
         FILE* file;
@@ -22,10 +23,27 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
         std::cout << "Console logging initialized.\n";
     }
 
+    WindowState win(hwnd, fileState, request, jsonParse);
+    if (!win.CreateParentWindow())
+    {
+        return 0;
+    }
+
+    ShowWindow(win.Window(), nCmdShow);
+
+    MSG msg = { };
+    while (GetMessage(&msg, nullptr, 0, 0))
+    {
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+    }
+
     // Create an instance of the window class. This handles all the setup and window creation.
-    WindowState window_state(hInstance, nCmdShow, fileState, request, jsonParse);
+    //WindowState window_state(hInstance, nCmdShow, fileState, request, jsonParse);
     //return window_state.RunMsgLoop();   // Run the message loop and return the application's exit code.
+    
     FreeConsole();
+    return 0;
 }
 //
 //int main()

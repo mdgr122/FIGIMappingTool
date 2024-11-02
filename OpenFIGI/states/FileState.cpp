@@ -45,7 +45,7 @@ std::string FileState::get_open_path()
 			FILE_ATTRIBUTE_NORMAL,
 			(HANDLE)NULL
 		);
-		std::cout << "FilePath successfully retrieved " << std::endl; //this->ofn.lpstrFile
+		//std::cout << "FilePath successfully retrieved " << std::endl; //this->ofn.lpstrFile
 		m_open_path = Utils::GetInstance().wideToStr(szFile);
 		return m_open_path;
 	}
@@ -80,7 +80,7 @@ std::string FileState::get_save_path()
 			FILE_ATTRIBUTE_NORMAL,
 			(HANDLE)NULL
 		);
-		std::cout << "FilePath successfully retrieved " << std::endl; //this->ofn.lpstrFile
+		//std::cout << "FilePath successfully retrieved " << std::endl; //this->ofn.lpstrFile
 		m_save_path = Utils::GetInstance().wideToStr(szFile);
 		return m_save_path;
 	}
@@ -142,11 +142,8 @@ void FileState::save_csv_file(std::vector<std::string> vec, std::string save_pat
 {
 	std::ofstream ofs(save_path);
 
-
-
 	for (const auto& elem : vec)
 	{
-		std::cout << elem << std::endl;
 		ofs << elem << '\n';
 	}
 }
