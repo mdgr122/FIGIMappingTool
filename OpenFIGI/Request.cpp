@@ -101,7 +101,7 @@ void Request::GetIdentifiers()
 			requestBody.push_back(jsonBody);
 			m_AllRequestBody.push_back(jsonBody);
 		}
-		if(idType != "NONE")
+		else if(idType != "NONE")
 		{
 			jsonBody = 
 			{
@@ -294,9 +294,6 @@ void Request::ParseResponse()
 	size_t counter = 0;
 
 	auto& inner_json = m_sResponse;
-	size_t m_AllRequestBodySize = m_AllRequestBody.size();
-	size_t m_sResponseSize = m_sResponse[0].size();
-	size_t m_sResponseSize2 = m_sResponse.size();
 
 	for (auto& elem : inner_json)
 	{

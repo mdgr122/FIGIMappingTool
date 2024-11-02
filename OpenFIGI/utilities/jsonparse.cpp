@@ -10,7 +10,7 @@ JsonParse::~JsonParse()
 
 void JsonParse::read_json(nlohmann::json response)
 {
-
+	m_csv_vec.clear();
 	m_json_data = response;
 	int t{};
 	nlohmann::json json_obj = m_json_data[t];
