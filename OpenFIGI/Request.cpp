@@ -1,8 +1,4 @@
 #include "Request.h"
-#include <cpr/cpr.h>
-#include <json.hpp>
-#include <regex>
-#include <algorithm>
 
 using namespace nlohmann;
 
@@ -18,9 +14,7 @@ Request::Request(FileState& fileState)
 	, m_RequestBody{json::array()}
 	, m_AllRequestBody{}
 {
-	//GetVec(m_fileState);
-	//GetIdentifierType();
-	//GetIdentifiers();
+
 }
 
 // A vector of pairs, where each pair contains a string identifier (T1) and an identifierType (T2).
@@ -30,7 +24,9 @@ void Request::GetIdentifiers()
 {
 	std::string idType;
 	std::string exch_code;
-	
+
+
+	std::cout << "Request API-KEY: " << m_apikey << std::endl;
 	
 	size_t counter = 0;
 	size_t job_count = 0;
@@ -131,7 +127,7 @@ void Request::GetIdentifiers()
 				cpr::Url{ "https://api.openfigi.com/v3/mapping" },
 				cpr::Header{
 					{"Content-Type", "application/json"},
-					{"X-OPENFIGI-APIKEY", API_KEY}
+					{"X-OPENFIGI-APIKEY", m_apikey}
 				},
 				cpr::Body{ requestBody.dump() }
 			);
@@ -282,6 +278,7 @@ nlohmann::json Request::GetResponse()
 
 void Request::ClearResponse()
 {
+	//m_Identifiers.clear();
 	m_IdentifierPairs.clear();
 	m_sResponse.clear();
 	m_RequestBody.clear();
@@ -303,6 +300,16 @@ void Request::ParseResponse()
 		counter++;
 	}
 
+}
+
+std::string const Request::get_apikey()
+{
+	return m_apikey;
+}
+
+void Request::set_apikey(std::wstring api_key)
+{
+	m_apikey = Utils::GetInstance().wideToStr(api_key);
 }
 
 std::vector<std::pair<std::string, Request::IdentifierType>> Request::GetIdentifierType()

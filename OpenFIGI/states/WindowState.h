@@ -22,6 +22,7 @@
 #define ID_ABOUT_WINDOW 1010
 #define WM_APP_CHILD_CLOSED (WM_APP + 1)
 #define ID_STATIC_ABOUT_MSG 1011
+#define ID_EDIT_APIKEY 1012
 
 
 class FileState;
@@ -38,7 +39,7 @@ public:
 	LRESULT HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam) override;
 
 	BOOL CreateParentWindow();
-	BOOL CreateChildWindow();
+	BOOL CreateAboutWindow();
 
 
 
@@ -54,23 +55,16 @@ public:
 	void save_output_csv();
 
 
-
 	bool save_ftype_csv();
-	int get_parent_middle_width(int parent_width, int child_width);
+	int get_parent_middle_width(int parent_width, int child_width) { return (parent_width - child_width) / 2; }
 
-	//std::wstring stringToWideString(const std::string& str);
-	//std::string WideToStr(const std::wstring& wstr);
 
-	HWND GetHWND() const { return m_hParent; };
-	std::unique_ptr<WindowState> childWindow;
+	HWND GetHWND() const { return m_hwndParent; };
+	std::unique_ptr<WindowState> aboutWindow;
 
 private:
-	HINSTANCE hInstance;	// A handle to an instance.This is the base address of the module in memory.
-	int nCmdShow;
-
-	HWND m_hParent;
-
-	HWND childHwnd;
+	HWND m_hwndParent;
+	HWND m_hwndAboutWindow;
 
 	HWND hwndFileButton;
 	HWND hwndRequestButton;
@@ -81,18 +75,17 @@ private:
 	HWND hwndWaitingMsg;
 	HWND hwndAboutButton;
 	HWND hwndAboutPopup;
+	HWND hwndAboutText;
 	HWND hwndCloseButton;
+	HWND m_hwndAPIKey;
 
-
+	std::wstring m_apikey;
 
 	int PARENT_WINDOW_HEIGHT = 250;
 	int PARENT_WINDOW_WIDTH = 650;
 
 	int nWidth;
 	int nHeight;
-
-	HBRUSH hbrBackground;
-	HBRUSH hBackground;
 
 	std::string m_open_path;
 	std::string m_save_path;
@@ -101,36 +94,4 @@ private:
 	Request& request;
 	JsonParse& jsonParse;
 
-	//HWND hwnd;						// A handle to a window.
-	//HWND m_hwnd;
-	//HWND hwndFileButton;
-	//HWND hwndRequestButton;
-	//HWND hwndSaveButton;
-	//HWND hwndSaveButton2;
-	//HWND hwndFilePath;				// Handle for file path
-	//HWND hwndSavePath;				// Handle for file path
-	//HWND hwndWaitingMsg;
-	//HWND hwndAboutButton;
-	//HWND hwndAboutPopup;
-	//
-	////HDC hdcEdit;				// Handle to the device context of the control
-	////HDC hdcStatic;				// Handle to the device context of the control
-
-	//HBRUSH hbrBackground;
-	//HBRUSH hBackground;
-
-	//std::string m_open_path;
-	//std::string m_save_path;
-
-	//FileState& fileState;
-	//Request& request;
-	//JsonParse& jsonParse;
-
-
-
-
-
-	//bool RegisterWindowClass();
-	//bool RegisterAboutWindowClass(HINSTANCE hInstance);
-	//bool CreateMainWindow();
 };

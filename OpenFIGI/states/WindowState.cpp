@@ -8,15 +8,29 @@ const wchar_t ABOUT_CLASS_NAME[] = L"AboutPopupWinudow";
 const wchar_t WINDOW_TITLE[] = L"OpenFIGI Lookup";
 
 WindowState::WindowState(HWND hParent, FileState& fileState, Request& request, JsonParse& jsonParse) 
-    : m_hParent(hParent)
+    : m_hwndParent(hParent)
     , fileState(fileState)
     , request(request)
     , jsonParse(jsonParse)
-    , childHwnd{nullptr}
-    , childWindow{ nullptr }
+    , aboutWindow{ nullptr }
+    , m_hwndAboutWindow{ nullptr }
+    , m_hwndAPIKey{ nullptr }
+    , hwndAboutButton{ nullptr }
+    , hwndAboutPopup{ nullptr }
+    , hwndAboutText{ nullptr }
+    , hwndCloseButton{ nullptr }
+    , hwndSaveButton{ nullptr }
+    , hwndSaveButton2{ nullptr }
+    , hwndFileButton{ nullptr }
+    , hwndRequestButton{ nullptr }
+    , hwndFilePath{ nullptr }
+    , hwndSavePath{ nullptr }
+    , hwndWaitingMsg{ nullptr }
+    , m_apikey{ L"853a5b1c-9ee7-45a9-85fe-67504db399b0" }
 {
     nWidth = GetSystemMetrics(SM_CXSCREEN);
     nHeight = GetSystemMetrics(SM_CYSCREEN);
+    request.set_apikey(m_apikey);
 }
 
 WindowState::~WindowState()
@@ -48,36 +62,36 @@ LRESULT WindowState::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
         }
         else if (LOWORD(wParam) == ID_BUTTON_SAVE)
         {
+            SetWindowText(hwndWaitingMsg, L"");
             if (m_save_path.empty())
             {
-                SetWindowText(hwndWaitingMsg, L"");
                 SetWindowText(hwndWaitingMsg, L"Save Path Empty!");
                 break;
             }
-
-            if ((request.GetResponse()).empty())
+            else if ((request.GetResponse()).empty())
             {
-                SetWindowText(hwndWaitingMsg, L"");
                 SetWindowText(hwndWaitingMsg, L"Nothing to Save");
                 break;
             }
             if (save_ftype_csv())
             {
+                SetWindowText(hwndWaitingMsg, L"Saving...");
                 save_output_csv();
+                SetWindowText(hwndWaitingMsg, L"File Saved!");
                 break;
             }
             else
             {
+                SetWindowText(hwndWaitingMsg, L"Saving...");
                 save_output();
+                SetWindowText(hwndWaitingMsg, L"File Saved!");
                 break;
             }
-            SetWindowText(hwndWaitingMsg, L"");
-            SetWindowText(hwndWaitingMsg, L"File Saved");
             break;
         }
         else if (LOWORD(wParam) == ID_BUTTON_REQUEST)
         {
-            bool flag = true;
+            bool process_flag = true;
 
             if (m_open_path.empty())
             {
@@ -85,11 +99,11 @@ LRESULT WindowState::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
                 SetWindowText(hwndWaitingMsg, L"Input Path Empty!");
                 break;
             }
-            while (flag)
+            while (process_flag)
             {
                 SetWindowText(hwndWaitingMsg, L"Processing...");
                 make_request();
-                flag = false;
+                process_flag = false;
             }
             SetWindowText(hwndWaitingMsg, L"");
             SetWindowText(hwndWaitingMsg, L"Complete!");
@@ -97,7 +111,7 @@ LRESULT WindowState::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
         }
         else if (LOWORD(wParam) == ID_BUTTON_ABOUT)
         {
-            CreateChildWindow();
+            CreateAboutWindow();
         }
         else if (LOWORD(wParam) == ID_BUTTON_CLOSE)
         {
@@ -122,6 +136,16 @@ LRESULT WindowState::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
                 m_save_path = Utils::GetInstance().wideToStr(buffer);
                 break;
             }
+            else if (LOWORD(wParam) == ID_EDIT_APIKEY)
+            {
+                std::wcout << "Current API-KEY: " << m_apikey << std::endl;
+                wchar_t buffer[256];
+                GetWindowText(hEditControl, buffer, 256);
+                m_apikey = buffer;
+
+                request.set_apikey(m_apikey);
+                std::wcout << "Updated API-KEY: " << m_apikey << std::endl;
+            }
             break;
         }
         break;
@@ -129,7 +153,7 @@ LRESULT WindowState::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
     case WM_APP_CHILD_CLOSED:
     {
         // Reset the unique_ptr as the child window is closed
-        childWindow.reset();
+        aboutWindow.reset();
         return 0;
     }
     case WM_CTLCOLORSTATIC:
@@ -147,11 +171,11 @@ LRESULT WindowState::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
     }
     case WM_CLOSE:
     {
-        if (m_hParent != NULL) // if m_hParent == NULL, that means m_hwnd == m_hParent == NULL
+        if (m_hwndParent != NULL) // if m_hwndParent == NULL, that means m_hwnd == m_hwndParent == NULL
         {
             DestroyWindow(m_hwnd); // Close only the child window
-            InvalidateRect(m_hParent, NULL, TRUE);
-            UpdateWindow(m_hParent);
+            InvalidateRect(m_hwndParent, NULL, TRUE);
+            UpdateWindow(m_hwndParent);
             return 0;
         }
         // return 0 **** this extra return statement was the cause of a lot of pain.
@@ -164,14 +188,14 @@ LRESULT WindowState::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
     }
     case WM_DESTROY:
     {
-        if (m_hParent == NULL) // Only post quit message for the main window
+        if (m_hwndParent == NULL) // Only post quit message for the main window
         {
             PostQuitMessage(0); // End the application
         }
         else
         {
             // Notify the parent that the child is closing
-            PostMessage(m_hParent, WM_APP_CHILD_CLOSED, 0, 0);
+            PostMessage(m_hwndParent, WM_APP_CHILD_CLOSED, 0, 0);
         }
         return 0;
 
@@ -210,12 +234,14 @@ BOOL WindowState::CreateParentWindow()
     hwndAboutButton = CreateWindow(L"BUTTON", L"About", WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_FLAT, 2, 190, 36, 14, m_hwnd, (HMENU)ID_BUTTON_ABOUT, GetModuleHandle(NULL), NULL);
 
 
-    // Path windows
+    // Edit Windows
     hwndFilePath = CreateWindow(L"EDIT", L"", WS_TABSTOP | WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT | ES_AUTOHSCROLL, 10, 10, 530, 20, m_hwnd, (HMENU)ID_FILE_PATH, GetModuleHandle(NULL), NULL);
     hwndSavePath = CreateWindow(L"EDIT", L"", WS_TABSTOP | WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT | ES_AUTOHSCROLL, 10, 50, 530, 20, m_hwnd, (HMENU)ID_SAVE_PATH, GetModuleHandle(NULL), NULL);
+    m_hwndAPIKey = CreateWindow(L"EDIT", m_apikey.c_str(), WS_TABSTOP | WS_VISIBLE | WS_CHILD | SS_CENTER | WS_BORDER, get_parent_middle_width(PARENT_WINDOW_WIDTH, (PARENT_WINDOW_WIDTH - 200)), 190, PARENT_WINDOW_WIDTH - 200, 20, m_hwnd, (HMENU)ID_EDIT_APIKEY, GetModuleHandle(NULL), NULL);
 
-    // Static Message Window
-    hwndWaitingMsg = CreateWindow(L"STATIC", L"", WS_TABSTOP | WS_VISIBLE | WS_CHILD | SS_CENTER, get_parent_middle_width(PARENT_WINDOW_WIDTH, 200), 175, 200, 20, m_hwnd, (HMENU)ID_STATIC_MSG, GetModuleHandle(NULL), NULL);
+
+    // Static Windows
+    hwndWaitingMsg = CreateWindow(L"STATIC", L"", WS_TABSTOP | WS_VISIBLE | WS_CHILD | SS_CENTER, get_parent_middle_width(PARENT_WINDOW_WIDTH, 200), 160, 200, 20, m_hwnd, (HMENU)ID_STATIC_MSG, GetModuleHandle(NULL), NULL);
 
 
     HFONT hFontAbout = CreateFont(
@@ -240,15 +266,15 @@ BOOL WindowState::CreateParentWindow()
 
 }
 
-BOOL WindowState::CreateChildWindow()
+BOOL WindowState::CreateAboutWindow()
 {
 
-    if (childWindow)
+    if (aboutWindow)
     {
         return TRUE;
     }
 
-    childWindow = std::make_unique<WindowState>(m_hwnd, fileState, request, jsonParse);
+    aboutWindow = std::make_unique<WindowState>(m_hwnd, fileState, request, jsonParse);
 
     DWORD childStyle = WS_POPUP | WS_BORDER | WS_VISIBLE;
     RECT parentRect;
@@ -276,24 +302,24 @@ BOOL WindowState::CreateChildWindow()
 
 
 
-    if (childWindow->Create(L"", childStyle, 0, 50, 50, childWidth, childHeight, m_hwnd))
+    if (aboutWindow->Create(L"", childStyle, 0, 50, 50, childWidth, childHeight, m_hwnd))
     {
 
 
-        childHwnd = childWindow->Window();  // Store the handle to the child window
-        SetWindowPos(childHwnd, HWND_TOPMOST, childX, childY, childWidth, childHeight, SWP_NOSIZE | SWP_NOACTIVATE);
+        m_hwndAboutWindow = aboutWindow->Window();  // Store the handle to the child window
+        SetWindowPos(m_hwndAboutWindow, HWND_TOPMOST, childX, childY, childWidth, childHeight, SWP_NOSIZE | SWP_NOACTIVATE);
 
 
         RECT childRect;
-        GetWindowRect(childHwnd, &childRect);
+        GetWindowRect(m_hwndAboutWindow, &childRect);
         int childBtnWidth = 16;
         int childBtnHeight = 14;
 
         int childBtnX = childWidth - childBtnWidth;
         int childBtnY = -1;
 
-        hwndCloseButton = CreateWindow(L"BUTTON", L"X", WS_CHILD | WS_VISIBLE | BS_FLAT | SS_CENTER, childBtnX, childBtnY, childBtnWidth, childBtnHeight, childHwnd, (HMENU)ID_BUTTON_CLOSE, GetModuleHandle(NULL), NULL);
-        HWND hwndAboutText = CreateWindow(L"STATIC", aboutText, WS_CHILD | WS_VISIBLE | SS_CENTER, 1, 10, childWidth, childHeight - 40, childHwnd, (HMENU)ID_STATIC_ABOUT_MSG, GetModuleHandle(NULL), NULL);
+        hwndCloseButton = CreateWindow(L"BUTTON", L"X", WS_CHILD | WS_VISIBLE | BS_FLAT | SS_CENTER, childBtnX, childBtnY, childBtnWidth, childBtnHeight, m_hwndAboutWindow, (HMENU)ID_BUTTON_CLOSE, GetModuleHandle(NULL), NULL);
+        hwndAboutText = CreateWindow(L"STATIC", aboutText, WS_CHILD | WS_VISIBLE | SS_CENTER, 1, 10, childWidth, childHeight - 40, m_hwndAboutWindow, (HMENU)ID_STATIC_ABOUT_MSG, GetModuleHandle(NULL), NULL);
 
         HFONT hFont = CreateFont(
             16,                 // Height
@@ -317,56 +343,32 @@ BOOL WindowState::CreateChildWindow()
     }
 
 
-    childWindow.reset();
-    childHwnd = nullptr; // Clear childHwnd if creation failed
+    aboutWindow.reset();
+    m_hwndAboutWindow = nullptr; // Clear childHwnd if creation failed
     return FALSE;
 }
 
 
-int WindowState::get_parent_middle_width(int parent_width, int child_width)
-{
-    return ((parent_width - child_width) / 2);
-}
-
 
 void WindowState::get_open_path()
 {
-    //FileState fileState;
     m_open_path = fileState.get_open_path();
-    //SetWindowText(this->hwndFilePath, stringToWideString(m_open_path).c_str());
     SetWindowText(this->hwndFilePath, Utils::GetInstance().strToWide(m_open_path).c_str());
-    // fileState.read_file();
-
 }
 
 void WindowState::get_save_path()
 {
-    //FileState fileState;
     m_save_path = fileState.get_save_path();
-    //SetWindowText(this->hwndSavePath, stringToWideString(m_save_path).c_str());
     SetWindowText(this->hwndSavePath, Utils::GetInstance().strToWide(m_save_path).c_str());
-    //fileState.read_file();
-    //fileState.save_file(request.GetResponse());
-
 }
 
 void WindowState::make_request()
 {
-    //GetWindowText(this->hwndFilePath, stringToWideString(m_open_path).c_str());
-    //if (!m_open_path.empty())
-    //{
-    //    fileState.read_file(m_open_path);
-    //    request.GetVec();
-    //    request.GetIdentifierType();
-    //    request.GetIdentifiers(); // Where the actual request is made
-    //    return true;
-    //}
-    //return false;
-    if (!(request.GetResponse()).empty())
-    {
-        request.ClearResponse();
-    }
+
+    fileState.clear_data();
     fileState.read_file(m_open_path);
+
+    request.ClearResponse();
     request.GetVec();
     request.GetIdentifierType();
     request.GetIdentifiers(); // Where the actual request is made
@@ -374,8 +376,6 @@ void WindowState::make_request()
 
 void WindowState::save_output()
 {
-    //GetWindowText(this->hwndSavePath, stringToWideString(m_save_path).c_str());
-
     fileState.save_file(request.GetResponse(), m_save_path);
 }
 

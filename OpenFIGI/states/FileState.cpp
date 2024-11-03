@@ -148,6 +148,12 @@ void FileState::save_csv_file(std::vector<std::string> vec, std::string save_pat
 	}
 }
 
+void FileState::clear_data()
+{
+	m_input_vec.clear();
+	m_response.clear();
+}
+
 std::string FileState::format_string(const std::string& open_path)
 {
 	std::string newPath = open_path;

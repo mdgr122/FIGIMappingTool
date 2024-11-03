@@ -4,6 +4,7 @@
 #include <vector>
 #include <cpr/cpr.h>
 #include <json.hpp>
+#include <regex>
 #include <algorithm>
 #include <cctype>
 #include "states/FileState.h"
@@ -45,20 +46,23 @@ public:
 		VENDOR_INDEX_CODE, NONE
 	};
 
-	void GetVec();
-	std::vector<std::pair<std::string, IdentifierType>> GetIdentifierType();	
+
+	std::vector<std::pair<std::string, IdentifierType>> GetIdentifierType();
+	void GetVec();	
 	void GetIdentifiers();
 
 	nlohmann::json GetResponse();
 	void ClearResponse();
-
 	void ParseResponse();
 
 
+	std::string const get_apikey();
+	void set_apikey(std::wstring api_key);
 	
 
 private:
-	const std::string API_KEY = "853a5b1c-9ee7-45a9-85fe-67504db399b0";
+
+	std::string m_apikey;
 
 	FileState& m_fileState;
 	std::vector<std::string> m_Identifiers;

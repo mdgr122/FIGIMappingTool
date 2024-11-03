@@ -27,6 +27,7 @@ public:
 	void read_file(std::string file_path);
 	void save_file(nlohmann::json response, std::string save_path);
 	void save_csv_file(std::vector<std::string> vec, std::string save_path);
+	void clear_data();
 
 	std::string format_string(const std::string& open_path);
 
