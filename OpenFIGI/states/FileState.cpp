@@ -26,7 +26,7 @@ std::string FileState::get_open_path()
 	ofn_open.lpstrFile = szFile;
 	ofn_open.lpstrFile[0] = '\0'; // Set lpstrFile[0] to '\0' so that GetOpenFileName does not use the contents of szFile to initialize itself.
 	ofn_open.nMaxFile = sizeof(szFile);
-	ofn_open.lpstrFilter = L"Text Files (*.txt)\0*.txt\0CSV Files (*.csv)\0*.csv\0All Files (*.*)\0*.*\0";	//L"All\0*.*\0Text\0*.TXT\0";
+	ofn_open.lpstrFilter = L"Text Files (*.txt)\0*.txt\0All Files (*.*)\0*.*\0";
 	ofn_open.nFilterIndex = 1;
 	ofn_open.lpstrFileTitle = NULL;
 	ofn_open.nMaxFileTitle = 0;
@@ -45,7 +45,6 @@ std::string FileState::get_open_path()
 			FILE_ATTRIBUTE_NORMAL,
 			(HANDLE)NULL
 		);
-		//std::cout << "FilePath successfully retrieved " << std::endl; //this->ofn.lpstrFile
 		m_open_path = Utils::GetInstance().wideToStr(szFile);
 		return m_open_path;
 	}
@@ -59,9 +58,14 @@ std::string FileState::get_save_path()
 	ofn_save.lStructSize = sizeof(ofn_save);
 	ofn_save.hwndOwner = hwnd;
 	ofn_save.lpstrFile = szFile;
-	ofn_save.lpstrFile[0] = '\0'; // Set lpstrFile[0] to '\0' so that GetOpenFileName does not use the contents of szFile to initialize itself.
+
+	std::wstring placeholder = L"response.csv";
+	wcsncpy_s(szFile, placeholder.c_str(), placeholder.size() + 1);
+
+	ofn_save.lpstrFile = szFile;
+	//ofn_save.lpstrFile[0] = '\0'; // Set lpstrFile[0] to '\0' so that GetOpenFileName does not use the contents of szFile to initialize itself.
 	ofn_save.nMaxFile = sizeof(szFile);
-	ofn_save.lpstrFilter = L"CSV Files (*.csv)\0*.csv\0JSON Files (*.json)\0*.json\0Text Files (*.txt)\0*.txt\0All Files (*.*)\0*.*\0"; //L".json;.txt";
+	ofn_save.lpstrFilter = L"Compatible Files (*.txt;*.csv;*.json)\0*.txt;*.csv;*.json\0Text Files (*.txt)\0*.txt\0CSV Files (*.csv)\0*.csv\0All Files (*.*)\0*.*\0";
 	ofn_save.nFilterIndex = 1;
 	ofn_save.lpstrFileTitle = NULL;
 	ofn_save.nMaxFileTitle = 0;
@@ -76,11 +80,10 @@ std::string FileState::get_save_path()
 			GENERIC_READ,
 			FILE_SHARE_READ | FILE_SHARE_WRITE, // 0,
 			(LPSECURITY_ATTRIBUTES)NULL,
-			OPEN_EXISTING,
+			CREATE_ALWAYS,
 			FILE_ATTRIBUTE_NORMAL,
 			(HANDLE)NULL
 		);
-		//std::cout << "FilePath successfully retrieved " << std::endl; //this->ofn.lpstrFile
 		m_save_path = Utils::GetInstance().wideToStr(szFile);
 		return m_save_path;
 	}

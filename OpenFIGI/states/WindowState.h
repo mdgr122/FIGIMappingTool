@@ -79,6 +79,12 @@ private:
 	HWND hwndCloseButton;
 	HWND m_hwndAPIKey;
 
+	HBRUSH m_hbrBackground;
+	HBRUSH hbrEditBackground;
+	HFONT hFontAboutButtonText;
+	HFONT hFontAboutText;
+	HFONT hFontSmall;
+
 	std::wstring m_apikey;
 
 	int PARENT_WINDOW_HEIGHT = 250;

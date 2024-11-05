@@ -25,7 +25,7 @@ public:
 	bool Validate_SEDOL(std::string& identifier);
 	bool Validate_COMMON(std::string& identifier);
 	bool Validate_WERTPAPIER(std::string& identifier);
-	bool Validate_COMPOSITE_ID_BB_GLOBAL(std::string& identifier);
+	bool Validate_ID_BB_GLOBAL(std::string& identifier);
 	bool Validate_TICKER(std::string& identifier);
 	bool Validate_CUSIP(std::string& identifier);
 	
@@ -37,13 +37,15 @@ public:
 		return std::all_of(str.begin(), str.end(), [](unsigned char c) { return std::isdigit(c); });
 	}
 
+	void process_ticker(std::string& str);
+
 	enum class IdentifierType {
-		ID_ISIN = 0, ID_BB_UNIQUE, ID_SEDOL, ID_COMMON, ID_WERTPAPIER, ID_CUSIP, ID_CINS,
+		NONE = 0, ID_ISIN, ID_BB_UNIQUE, ID_SEDOL, ID_COMMON, ID_WERTPAPIER, ID_CUSIP, ID_CINS,
 		ID_BB, ID_BB_8_CHR, ID_TRACE, ID_ITALY, ID_EXCH_SYMBOL, ID_FULL_EXCHANGE_SYMBOL,
 		COMPOSITE_ID_BB_GLOBAL, ID_BB_GLOBAL_SHARE_CLASS_LEVEL, ID_BB_GLOBAL,
 		ID_BB_SEC_NUM_DES, TICKER, BASE_TICKER, ID_CUSIP_8_CHR, OCC_SYMBOL,
 		UNIQUE_ID_FUT_OPT, OPRA_SYMBOL, TRADING_SYSTEM_IDENTIFIER, ID_SHORT_CODE,
-		VENDOR_INDEX_CODE, NONE
+		VENDOR_INDEX_CODE
 	};
 
 
@@ -61,6 +63,8 @@ public:
 	
 
 private:
+
+	cpr::Response r;
 
 	std::string m_apikey;
 

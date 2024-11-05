@@ -8,6 +8,7 @@ using namespace nlohmann;
 
 Request::Request(FileState& fileState)
 	: m_fileState(fileState)
+	, r{}
 	, m_IdentifierPairs{}
 	, m_IdentifierType{ IdentifierType::NONE }
 	, m_sResponse{json::array()}
@@ -25,8 +26,6 @@ void Request::GetIdentifiers()
 	std::string idType;
 	std::string exch_code;
 
-
-	std::cout << "Request API-KEY: " << m_apikey << std::endl;
 	
 	size_t counter = 0;
 	size_t job_count = 0;
@@ -42,7 +41,7 @@ void Request::GetIdentifiers()
 	bool api_cooldown;
 	
 	// 100 MAPPING REQUESTS	
-	for (const auto& elem : m_IdentifierPairs)
+	for (auto& elem : m_IdentifierPairs)
 	{
 		counter++;
 		std::string test = elem.first;
@@ -57,8 +56,8 @@ void Request::GetIdentifiers()
 		case Request::IdentifierType::ID_CUSIP:
 			idType = "ID_CUSIP";
 			break;
-		case Request::IdentifierType::COMPOSITE_ID_BB_GLOBAL:
-			idType = "COMPOSITE_ID_BB_GLOBAL";
+		case Request::IdentifierType::ID_BB_GLOBAL:
+			idType = "ID_BB_GLOBAL";
 			break;
 		case Request::IdentifierType::ID_SEDOL:
 			idType = "ID_SEDOL";
@@ -69,31 +68,44 @@ void Request::GetIdentifiers()
 		default:
 				break;
 		}
-		if (idType == "ID_ISIN")
+		//if (idType == "ID_ISIN")
+		//{
+		//	// Temporarily removing to allow all results
+		//	//exch_code = ((elem.first.substr(0, 2)) == "US") ? "US" : "";
+		//	exch_code = "";
+		//	
+		//	if (!exch_code.empty())
+		//	{
+		//		jsonBody =
+		//		{
+		//			{"idType", idType},
+		//			{"idValue", elem.first},
+		//			{"exchCode", exch_code},
+		//			{"includeUnlistedEquities", true},
+		//		};
+		//	}
+		//	else 
+		//	{
+		//		jsonBody =
+		//		{
+		//			{"idType", idType},
+		//			{"idValue", elem.first},
+		//			{"includeUnlistedEquities", true},
+		//		};
+		//	}
+		//	requestBody.push_back(jsonBody);
+		//	m_AllRequestBody.push_back(jsonBody);
+		//}
+		if (idType == "TICKER")
 		{
-			// Temporarily removing to allow all results
-			//exch_code = ((elem.first.substr(0, 2)) == "US") ? "US" : "";
-			exch_code = "";
-			
-			if (!exch_code.empty())
+			std::string idValue = elem.first;
+			process_ticker(idValue);
+			jsonBody =
 			{
-				jsonBody =
-				{
-					{"idType", idType},
-					{"idValue", elem.first},
-					{"exchCode", exch_code},
-					{"includeUnlistedEquities", true},
-				};
-			}
-			else 
-			{
-				jsonBody =
-				{
-					{"idType", idType},
-					{"idValue", elem.first},
-					{"includeUnlistedEquities", true},
-				};
-			}
+				{"idType", idType},
+				{"idValue", idValue},
+				{"includeUnlistedEquities", true}
+			};
 			requestBody.push_back(jsonBody);
 			m_AllRequestBody.push_back(jsonBody);
 		}
@@ -123,7 +135,7 @@ void Request::GetIdentifiers()
 
 		if (requestBody.size() == 100 || (m_IdentifierPairs.size() - counter) == 0)
 		{
-			cpr::Response r = cpr::Post(
+			r = cpr::Post(
 				cpr::Url{ "https://api.openfigi.com/v3/mapping" },
 				cpr::Header{
 					{"Content-Type", "application/json"},
@@ -131,6 +143,11 @@ void Request::GetIdentifiers()
 				},
 				cpr::Body{ requestBody.dump() }
 			);
+			if (r.status_code != 200)
+			{
+				std::cout << "Error " << r.status_code << " | " << r.text << std::endl;
+				return;
+			}
 			job_count++;
 
 			json responseJson = json::parse(r.text);
@@ -218,7 +235,7 @@ bool Request::Validate_WERTPAPIER(std::string& identifier)
 	return false;
 }
 
-bool Request::Validate_COMPOSITE_ID_BB_GLOBAL(std::string& identifier)
+bool Request::Validate_ID_BB_GLOBAL(std::string& identifier)
 {
 	// COMPOSITE_ID_BB_GLOBAL REGEX
 	const std::regex pattern("^BBG[0-9A-Z]{9}$");
@@ -235,7 +252,9 @@ bool Request::Validate_COMPOSITE_ID_BB_GLOBAL(std::string& identifier)
 
 bool Request::Validate_TICKER(std::string& identifier)
 {
-	const std::regex pattern("([A-Za-z]{1,5})(-[A-Za-z]{1,2})?");
+	//const std::regex pattern("([A-Za-z]{1,5})(-[A-Za-z]{1,2})?");
+	const std::regex pattern("([A-Za-z]{1,5})([-./]?[A-Za-z]{1,2})?");
+
 	if (identifier.empty())
 		return false;
 
@@ -259,6 +278,28 @@ bool Request::Validate_CUSIP(std::string& identifier)
 	}
 
 	return false;
+}
+
+void Request::process_ticker(std::string& str)
+{
+	size_t dotPos = str.find('.');
+	if (dotPos != std::string::npos) {
+		size_t afterDot = dotPos + 1;
+		size_t charsAfterDot = str.size() - afterDot;
+
+		if (charsAfterDot == 0) {
+			// Case 3: '.' at the end, remove it
+			str.erase(dotPos, 1);
+		}
+		else if (charsAfterDot == 1) {
+			// Case 1: One character after '.', replace '.' with '/'
+			str[dotPos] = '/';
+		}
+		else if (charsAfterDot > 1) {
+			// Case 2: Multiple characters after '.', replace '.' with '-', keep only immediate character
+			str.replace(dotPos, charsAfterDot + 1, "-" + str.substr(afterDot, 1));
+		}
+	}
 }
 
 void Request::GetVec()
@@ -294,9 +335,20 @@ void Request::ParseResponse()
 
 	for (auto& elem : inner_json)
 	{
-		elem["exchCode"] = (m_AllRequestBody[counter]["exchCode"]);
-		elem["idValue"] = (m_AllRequestBody[counter]["idValue"]);
-		elem["idType"] = (m_AllRequestBody[counter]["idType"]);
+		////elem["exchCode"] = (m_AllRequestBody[counter]["exchCode"]);
+		//elem["idValue"] = (m_AllRequestBody[counter]["idValue"]);
+		//elem["idType"] = (m_AllRequestBody[counter]["idType"]);
+		//counter++;
+
+		for (auto it = m_AllRequestBody[counter].begin(); it != m_AllRequestBody[counter].end(); ++it)
+		{
+			// Assign the value from m_AllRequestBody to the corresponding key in elem
+			if (it.key() != "includeUnlistedEquities")
+			{
+				elem[it.key()] = it.value();
+			}
+			//elem[it.key()] = it.value();
+		}
 		counter++;
 	}
 
@@ -334,9 +386,9 @@ std::vector<std::pair<std::string, Request::IdentifierType>> Request::GetIdentif
 			type = IdentifierType::ID_CUSIP;
 			sType = "CUSIP";
 		}
-		else if (Validate_COMPOSITE_ID_BB_GLOBAL(elem))
+		else if (Validate_ID_BB_GLOBAL(elem))
 		{
-			type = IdentifierType::COMPOSITE_ID_BB_GLOBAL;
+			type = IdentifierType::ID_BB_GLOBAL;
 			sType = "FIGI";
 		}
 		else if (Validate_SEDOL(elem))
@@ -346,7 +398,6 @@ std::vector<std::pair<std::string, Request::IdentifierType>> Request::GetIdentif
 		}
 
 		m_IdentifierPairs.push_back(make_pair(elem, type));
-		//std::cout << elem << " [" << sType << "]" << std::endl;
 
 	}
 	return m_IdentifierPairs;

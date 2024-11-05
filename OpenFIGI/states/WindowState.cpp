@@ -9,6 +9,7 @@ const wchar_t WINDOW_TITLE[] = L"OpenFIGI Lookup";
 
 WindowState::WindowState(HWND hParent, FileState& fileState, Request& request, JsonParse& jsonParse) 
     : m_hwndParent(hParent)
+    , m_hbrBackground(CreateSolidBrush(RGB(255,255,255)))
     , fileState(fileState)
     , request(request)
     , jsonParse(jsonParse)
@@ -26,16 +27,84 @@ WindowState::WindowState(HWND hParent, FileState& fileState, Request& request, J
     , hwndFilePath{ nullptr }
     , hwndSavePath{ nullptr }
     , hwndWaitingMsg{ nullptr }
+    , hbrEditBackground(NULL)
+    , hFontAboutButtonText(NULL)
+    , hFontAboutText(NULL)
+    , hFontSmall(NULL)
     , m_apikey{ L"853a5b1c-9ee7-45a9-85fe-67504db399b0" }
 {
     nWidth = GetSystemMetrics(SM_CXSCREEN);
     nHeight = GetSystemMetrics(SM_CYSCREEN);
     request.set_apikey(m_apikey);
+
+    hbrEditBackground = CreateSolidBrush(RGB(240, 240, 240));
+
+    hFontAboutButtonText = CreateFont(
+        12,                 // Height (0 for default height)
+        0,                 // Width (0 for default width based on height)
+        0,                 // Escapement angle (0 for normal orientation)
+        0,                 // Orientation angle (0 for normal orientation)
+        FW_NORMAL,          // Weight (FW_DONTCARE lets the system choose an appropriate weight) 700 for bold
+        FALSE,             // Italic (FALSE for no italic)
+        FALSE,             // Underline (FALSE for no underline)
+        FALSE,             // Strikeout (FALSE for no strikeout)
+        DEFAULT_CHARSET,   // Character set (DEFAULT_CHARSET for default character set)
+        OUT_DEFAULT_PRECIS,// Output precision (OUT_DEFAULT_PRECIS for default)
+        CLIP_DEFAULT_PRECIS,// Clipping precision (CLIP_DEFAULT_PRECIS for default)
+        DEFAULT_QUALITY,   // Output quality (DEFAULT_QUALITY for default)
+        DEFAULT_PITCH | FF_SWISS, // Pitch and family (DEFAULT_PITCH and FF_DONTCARE for default)
+        L"Segoe UI");              // Font family name ("" or `NULL` for system default font)
+
+    hFontAboutText = CreateFont(
+        16,                 // Height
+        0,                  // Width
+        0,                  // Escapement
+        0,                  // Orientation
+        FW_NORMAL,          // Weight
+        FALSE,              // Italic
+        FALSE,              // Underline
+        FALSE,              // StrikeOut
+        DEFAULT_CHARSET,    // CharSet
+        OUT_DEFAULT_PRECIS, // OutPrecision
+        CLIP_DEFAULT_PRECIS,// ClipPrecision
+        DEFAULT_QUALITY,    // Quality
+        DEFAULT_PITCH | FF_SWISS, // PitchAndFamily
+        L"Segoe UI");       // Font name
+
+    hFontSmall = CreateFont(12, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, DEFAULT_PITCH | FF_SWISS, L"Segoe UI");
+
+    
+
 }
 
 WindowState::~WindowState()
 {
-
+    // Clean up GDI objects
+    if (m_hbrBackground)
+    {
+        DeleteObject(m_hbrBackground);
+        m_hbrBackground = NULL;
+    }
+    if (hbrEditBackground)
+    {
+        DeleteObject(hbrEditBackground);
+        hbrEditBackground = NULL;
+    }
+    if (hFontAboutButtonText)
+    {
+        DeleteObject(hFontAboutButtonText);
+        hFontAboutButtonText = NULL;
+    }
+    if (hFontAboutText)
+    {
+        DeleteObject(hFontAboutText);
+        hFontAboutText = NULL;
+    }
+    if (hFontSmall)
+    {
+        DeleteObject(hFontSmall);
+        hFontSmall = NULL;
+    }
 }
 
 PCWSTR WindowState::ClassName() const
@@ -73,17 +142,21 @@ LRESULT WindowState::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
                 SetWindowText(hwndWaitingMsg, L"Nothing to Save");
                 break;
             }
-            if (save_ftype_csv())
-            {
-                SetWindowText(hwndWaitingMsg, L"Saving...");
-                save_output_csv();
-                SetWindowText(hwndWaitingMsg, L"File Saved!");
-                break;
-            }
             else
             {
                 SetWindowText(hwndWaitingMsg, L"Saving...");
-                save_output();
+                // Without this UpdateWindow function call, there is a delay from when SetWindowText is called with "Saving..."
+                // This is because SetWindowText is not drawn until the window is painted, which doesn't happen until later in the loop.
+                // Therefore, ven though SetWindowText looks to be before the if statement, actual painting occurs later.
+                UpdateWindow(hwndWaitingMsg);
+                if (save_ftype_csv())
+                {
+                    save_output_csv();
+                }
+                else
+                {
+                    save_output();
+                }
                 SetWindowText(hwndWaitingMsg, L"File Saved!");
                 break;
             }
@@ -104,6 +177,7 @@ LRESULT WindowState::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
                 SetWindowText(hwndWaitingMsg, L"Processing...");
                 make_request();
                 process_flag = false;
+                break;
             }
             SetWindowText(hwndWaitingMsg, L"");
             SetWindowText(hwndWaitingMsg, L"Complete!");
@@ -150,15 +224,46 @@ LRESULT WindowState::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
         }
         break;
     }
+    case WM_ERASEBKGND:
+        {
+            HDC hdc = (HDC)wParam;
+            RECT rc;
+            GetClientRect(m_hwnd, &rc);
+
+            FillRect(hdc, &rc, m_hbrBackground);
+
+            return 1; // Indicate that we've handled the message
+        }
     case WM_APP_CHILD_CLOSED:
     {
         // Reset the unique_ptr as the child window is closed
         aboutWindow.reset();
         return 0;
     }
+    case WM_CTLCOLOREDIT:
+    {
+        HWND hEditControl = (HWND)lParam; // Handle to a window. Declared in WinDef.h as typedef HANDLE HWND;
+        HDC hdcEdit = (HDC)wParam; // Handle to a device context (DC). Declared in WinDef.h as typedef HANDLE HDC;
+
+        if (hEditControl == hwndFilePath)
+        {
+            // Set the text and background colors
+            SetTextColor(hdcEdit, RGB(0, 0, 0));        // Text color (black)
+            SetBkColor(hdcEdit, RGB(169, 169, 169));    // Background color (light gray)
+        }
+        else if (hEditControl == hwndSavePath)
+        {
+            // Set the text and background colors
+            SetTextColor(hdcEdit, RGB(0, 0, 0));        // Text color (black)
+            SetBkColor(hdcEdit, RGB(169, 169, 169));    // Background color (light gray)
+        }
+
+        // Return the background brush to paint the control's background
+        return (INT_PTR)hbrEditBackground;
+    }
     case WM_CTLCOLORSTATIC:
     {
-        HDC hdcStatic = (HDC)wParam;
+        HDC hdcStatic = (HDC)wParam; 
         HWND hwndStatic = (HWND)lParam;
 
         if (GetDlgCtrlID(hwndStatic) == ID_STATIC_MSG)
@@ -198,7 +303,6 @@ LRESULT WindowState::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
             PostMessage(m_hwndParent, WM_APP_CHILD_CLOSED, 0, 0);
         }
         return 0;
-
     }
 
     default:
@@ -225,42 +329,38 @@ BOOL WindowState::CreateParentWindow()
     // Center the window on the screen
     SetWindowPos(m_hwnd, NULL, xPos, yPos, PARENT_WINDOW_WIDTH, PARENT_WINDOW_HEIGHT, SWP_NOZORDER | SWP_SHOWWINDOW);
 
+    RECT parent_rect;
+    GetClientRect(m_hwnd, &parent_rect);
 
-    // Button Windows
-    hwndRequestButton = CreateWindow(L"BUTTON", L"Request", default_btn_style, 2, 100, 630, 50, m_hwnd, (HMENU)ID_BUTTON_REQUEST, GetModuleHandle(NULL), NULL);
+    int about_btn_width = 36;
+    int about_btn_height = 14;
+    int x_pos_about_btn = (parent_rect.right - about_btn_width - 2);
+    int y_pos_about_btn = (parent_rect.bottom - about_btn_height - 2);
+
+
+
+    // Button Windows 20 80 630 50
+    hwndRequestButton = CreateWindow(L"BUTTON", L"REQUEST", default_btn_style, get_parent_middle_width(PARENT_WINDOW_WIDTH, 300), 80, 300, 50, m_hwnd, (HMENU)ID_BUTTON_REQUEST, GetModuleHandle(NULL), NULL);
     hwndFileButton = CreateWindow(L"BUTTON", L"File", default_btn_style, 550, 10, 50, 20, m_hwnd, (HMENU)ID_BUTTON_FILE_PATH, GetModuleHandle(NULL), NULL);
-    hwndSaveButton = CreateWindow(L"BUTTON", L"Save", default_btn_style, 550, 50, 50, 20, m_hwnd, (HMENU)ID_BUTTON_SAVE, GetModuleHandle(NULL), NULL);
-    hwndSaveButton2 = CreateWindow(L"BUTTON", L":", default_btn_style, 601, 50, 16, 20, m_hwnd, (HMENU)ID_BUTTON_SAVE_PATH, GetModuleHandle(NULL), NULL);
-    hwndAboutButton = CreateWindow(L"BUTTON", L"About", WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_FLAT, 2, 190, 36, 14, m_hwnd, (HMENU)ID_BUTTON_ABOUT, GetModuleHandle(NULL), NULL);
+    hwndSaveButton = CreateWindow(L"BUTTON", L"Save", default_btn_style, 550, 35, 50, 20, m_hwnd, (HMENU)ID_BUTTON_SAVE, GetModuleHandle(NULL), NULL);
+    hwndSaveButton2 = CreateWindow(L"BUTTON", L":", default_btn_style, 601, 35, 16, 20, m_hwnd, (HMENU)ID_BUTTON_SAVE_PATH, GetModuleHandle(NULL), NULL);
+    hwndAboutButton = CreateWindow(L"BUTTON", L"About", WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_FLAT, x_pos_about_btn, y_pos_about_btn, about_btn_width, about_btn_height, m_hwnd, (HMENU)ID_BUTTON_ABOUT, GetModuleHandle(NULL), NULL);
 
 
-    // Edit Windows
+    // Edit Windows// x y width height
     hwndFilePath = CreateWindow(L"EDIT", L"", WS_TABSTOP | WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT | ES_AUTOHSCROLL, 10, 10, 530, 20, m_hwnd, (HMENU)ID_FILE_PATH, GetModuleHandle(NULL), NULL);
-    hwndSavePath = CreateWindow(L"EDIT", L"", WS_TABSTOP | WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT | ES_AUTOHSCROLL, 10, 50, 530, 20, m_hwnd, (HMENU)ID_SAVE_PATH, GetModuleHandle(NULL), NULL);
-    m_hwndAPIKey = CreateWindow(L"EDIT", m_apikey.c_str(), WS_TABSTOP | WS_VISIBLE | WS_CHILD | SS_CENTER | WS_BORDER, get_parent_middle_width(PARENT_WINDOW_WIDTH, (PARENT_WINDOW_WIDTH - 200)), 190, PARENT_WINDOW_WIDTH - 200, 20, m_hwnd, (HMENU)ID_EDIT_APIKEY, GetModuleHandle(NULL), NULL);
+    hwndSavePath = CreateWindow(L"EDIT", L"", WS_TABSTOP | WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT | ES_AUTOHSCROLL, 10, 35, 530, 20, m_hwnd, (HMENU)ID_SAVE_PATH, GetModuleHandle(NULL), NULL);
+    m_hwndAPIKey = CreateWindow(L"EDIT", m_apikey.c_str(), WS_TABSTOP | WS_VISIBLE | WS_CHILD | SS_CENTER | WS_BORDER, get_parent_middle_width(PARENT_WINDOW_WIDTH, (PARENT_WINDOW_WIDTH - 450)), 194, PARENT_WINDOW_WIDTH - 450, 16, m_hwnd, (HMENU)ID_EDIT_APIKEY, GetModuleHandle(NULL), NULL);
 
 
     // Static Windows
     hwndWaitingMsg = CreateWindow(L"STATIC", L"", WS_TABSTOP | WS_VISIBLE | WS_CHILD | SS_CENTER, get_parent_middle_width(PARENT_WINDOW_WIDTH, 200), 160, 200, 20, m_hwnd, (HMENU)ID_STATIC_MSG, GetModuleHandle(NULL), NULL);
 
 
-    HFONT hFontAbout = CreateFont(
-    12,                 // Height (0 for default height)
-    0,                 // Width (0 for default width based on height)
-    0,                 // Escapement angle (0 for normal orientation)
-    0,                 // Orientation angle (0 for normal orientation)
-    FW_NORMAL,          // Weight (FW_DONTCARE lets the system choose an appropriate weight) 700 for bold
-    FALSE,             // Italic (FALSE for no italic)
-    FALSE,             // Underline (FALSE for no underline)
-    FALSE,             // Strikeout (FALSE for no strikeout)
-    DEFAULT_CHARSET,   // Character set (DEFAULT_CHARSET for default character set)
-    OUT_DEFAULT_PRECIS,// Output precision (OUT_DEFAULT_PRECIS for default)
-    CLIP_DEFAULT_PRECIS,// Clipping precision (CLIP_DEFAULT_PRECIS for default)
-    DEFAULT_QUALITY,   // Output quality (DEFAULT_QUALITY for default)
-    DEFAULT_PITCH | FF_SWISS, // Pitch and family (DEFAULT_PITCH and FF_DONTCARE for default)
-    L"Microsoft Sans Serif");              // Font family name ("" or `NULL` for system default font)
         
-    SendMessage(hwndAboutButton, WM_SETFONT, (WPARAM)hFontAbout, TRUE);
+    SendMessage(hwndAboutButton, WM_SETFONT, (WPARAM)hFontAboutButtonText, TRUE);
+    SendMessage(m_hwndAPIKey, WM_SETFONT, (WPARAM)hFontSmall, TRUE);
+
 
     return TRUE;
 
@@ -307,7 +407,7 @@ BOOL WindowState::CreateAboutWindow()
 
 
         m_hwndAboutWindow = aboutWindow->Window();  // Store the handle to the child window
-        SetWindowPos(m_hwndAboutWindow, HWND_TOPMOST, childX, childY, childWidth, childHeight, SWP_NOSIZE | SWP_NOACTIVATE);
+        SetWindowPos(m_hwndAboutWindow, HWND_TOP, childX, childY, childWidth, childHeight, SWP_NOSIZE | SWP_NOACTIVATE);
 
 
         RECT childRect;
@@ -321,23 +421,8 @@ BOOL WindowState::CreateAboutWindow()
         hwndCloseButton = CreateWindow(L"BUTTON", L"X", WS_CHILD | WS_VISIBLE | BS_FLAT | SS_CENTER, childBtnX, childBtnY, childBtnWidth, childBtnHeight, m_hwndAboutWindow, (HMENU)ID_BUTTON_CLOSE, GetModuleHandle(NULL), NULL);
         hwndAboutText = CreateWindow(L"STATIC", aboutText, WS_CHILD | WS_VISIBLE | SS_CENTER, 1, 10, childWidth, childHeight - 40, m_hwndAboutWindow, (HMENU)ID_STATIC_ABOUT_MSG, GetModuleHandle(NULL), NULL);
 
-        HFONT hFont = CreateFont(
-            16,                 // Height
-            0,                  // Width
-            0,                  // Escapement
-            0,                  // Orientation
-            FW_NORMAL,          // Weight
-            FALSE,              // Italic
-            FALSE,              // Underline
-            FALSE,              // StrikeOut
-            DEFAULT_CHARSET,    // CharSet
-            OUT_DEFAULT_PRECIS, // OutPrecision
-            CLIP_DEFAULT_PRECIS,// ClipPrecision
-            DEFAULT_QUALITY,    // Quality
-            DEFAULT_PITCH | FF_SWISS, // PitchAndFamily
-            L"Segoe UI");       // Font name
 
-        SendMessage(hwndAboutText, WM_SETFONT, (WPARAM)hFont, TRUE);
+        SendMessage(hwndAboutText, WM_SETFONT, (WPARAM)hFontAboutText, TRUE);
         
         return TRUE;
     }
@@ -387,21 +472,23 @@ void WindowState::save_output_csv()
 
 bool WindowState::save_ftype_csv()
 {
-    std::string ext{};
-    bool flag = false;
-    for (size_t i = 0; i < m_save_path.size(); i++)
-    {
-        char c = m_save_path[i];
-        if (c == '.')
-        {
-            flag = true;
-        }
-        if (flag == true)
-        {
-            ext.push_back(c);
-        }
-    }
-    if (ext == ".csv")
-        return true;
-    return false;
+    //std::string ext{};
+    //bool flag = false;
+    //for (size_t i = 0; i < m_save_path.size(); i++)
+    //{
+    //    char c = m_save_path[i];
+    //    if (c == '.')
+    //    {
+    //        flag = true;
+    //    }
+    //    if (flag == true)
+    //    {
+    //        ext.push_back(c);
+    //    }
+    //}
+    //if (ext == ".csv")
+    //    return true;
+    //return false;
+    return m_save_path.size() >= 4 && m_save_path.compare(m_save_path.size() - 4, 4, ".csv") == 0;
+
 }

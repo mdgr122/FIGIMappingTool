@@ -1,4 +1,5 @@
 #include "jsonparse.h"
+#include <cassert>
 
 JsonParse::JsonParse() : m_json_data{}, m_csv_vec{}
 {
@@ -8,141 +9,165 @@ JsonParse::~JsonParse()
 {
 }
 
-void JsonParse::read_json(nlohmann::json response)
+void JsonParse::read_json(const nlohmann::json &response)
 {
 	m_csv_vec.clear();
 	m_json_data = response;
-	int t{};
-	nlohmann::json json_obj = m_json_data[t];
-	nlohmann::json json_data_obj = m_json_data[t]["data"];
 
-	size_t main_counter = 0;
-	size_t counter = 0;
 
-	std::string header_line{};
-	std::string row_line{};
-	
-	// Header Loop
-	// Loops through each object in the array.
-	for (nlohmann::json::iterator i = json_obj.begin(); i != json_obj.end(); ++i)
+	if (!m_json_data.is_array() || m_json_data.empty())
 	{
-		//vec.push_back(i.key());
-		if (i.key() != "data")
-		{
-			header_line.append(i.key());
-			header_line.append(",");
-		}
-
-
-		if (i.key() == "data")
-		{
-			// Loops through each object in a json object whose value is an array of objects
-			for (nlohmann::json::iterator el = (i.value()).begin(); el != (i.value()).end(); ++el)
-			{
-
-				while (counter < json_obj["data"][0].size())
-				{
-					for (nlohmann::json::iterator nel = (el.value()).begin(); nel != (el.value()).end(); ++nel)
-					{
-
-						header_line.append(nel.key());
-						header_line.append(",");
-						counter++;
-					}
-				}
-			}
-		}
-
+		// TODO: Handling if m_json_data is not an array or if m_json_data is empty.
+		return;
 	}
+
+	std::vector<std::string> header_keys;
+	nlohmann::json first_obj;
+
+
+	if (m_json_data.at(0).contains("data"))
+	{
+		first_obj = m_json_data.at(0);
+	}
+	else
+	{
+		int data_index = 0;
+		for (const auto& item : m_json_data)
+		{
+			if (item.is_object() && item.contains("data"))
+			{
+				first_obj = m_json_data.at(data_index);
+				break;
+			}
+			++data_index;
+		}
+	}
+
+
+
+	for (const auto& [key, value] : first_obj.items())
+	{
+		// Collecting keys of objects of first object in the parent array, if key is not "data"
+		if (key != "data" && key != "warning")
+		{
+			header_keys.push_back(key);
+		}
+	}
+
+	// Now can handle the data key
+	if (first_obj.contains("data") && first_obj["data"].is_array() && !first_obj["data"].empty())
+	{
+		const nlohmann::json& first_data_obj = first_obj["data"].at(0);
+		for (const auto& [key, value] : first_data_obj.items())
+		{
+			header_keys.push_back(key);
+		}
+	}
+
+	// Constructing the header
+	std::string header_line = join_keys(header_keys);
 	m_csv_vec.push_back(header_line);
 
-
-	size_t json_obj_count = 0;
-	size_t data_obj_count = 0;
-	size_t parent_counter = 0;
-	size_t child_counter = 1;
-	size_t child_child_counter = 0;
-	// 1
-
-	nlohmann::json data = m_json_data;
-
-
-	for (nlohmann::json::iterator it = data.begin(); it != data.end(); ++it)
+	// Processing the actual response
+	for (const auto& obj : m_json_data)
 	{
-		nlohmann::json json_obj = m_json_data[t];
-		for (nlohmann::json::iterator i = json_obj.begin(); i != json_obj.end(); ++i)
+		// Extracting the dict values, excluding the 'data' key
+		std::map<std::string, std::string> main_values;
+		for (const auto& [key, value] : obj.items())
 		{
-
-			// 2
-			// Loops through each object in a json object whose value is an array of objects
-			for (nlohmann::json::iterator el = (i.value()).begin(); el != (i.value()).end(); ++el)
+			if (key != "data")
 			{
-				child_counter = 1;
-				child_child_counter = 0;
-				if (!row_line.empty())
-				{
-					if (row_line.size() > 99)
-					{
-						m_csv_vec.push_back(row_line);
-
-					}
-				}
-				row_line.clear();
-
-				for (nlohmann::json::iterator nel = (el.value()).begin(); nel != (el.value()).end(); ++nel)
-				{
-					if (i.key() == "data")
-					{
-						if (!nel.value().empty())
-						{
-							row_line.append(nel.value());
-						}
-						else
-						{
-							row_line.append("");
-						}
-						row_line.append(",");
-						child_counter++;
-					}
-				}
-				while (child_child_counter < 4)
-				{
-					// for each obj in data, 2, loop through for the amount of objs in json_obj (i.e., loop through 4 objects twice)
-					for (nlohmann::json::iterator j = json_obj.begin(); j != json_obj.end(); j++)
-					{
-						if (!(j.value().is_array()))
-						{
-							if (j.value() == nullptr)
-							{
-								row_line.append("");
-							}
-							else
-							{
-								row_line.append(j.value());
-							}
-							row_line.append(",");
-						}
-						child_child_counter++;
-
-					}
-				}
-
-
+				main_values[key] = value_to_string(value);
 			}
-
-			parent_counter++;
 		}
-		t++;
+
+		// Processing the "data" array if it exists
+		if (obj.contains("data") && obj["data"].is_array())
+		{
+			for (const auto& data_item : obj["data"])
+			{
+				// Extracting object values from data array
+				std::map<std::string, std::string> data_values;
+				for (const auto& [key, value] : data_item.items())
+				{
+					data_values[key] = value_to_string(value);
+				}
+
+				// Building the rows
+				std::string row_line = build_csv_row(header_keys, main_values, data_values);
+				m_csv_vec.push_back(row_line);
+			}
+		}
+		else
+		{
+			// Build row without "data" array
+			std::string row_line = build_csv_row(header_keys, main_values, {});
+			m_csv_vec.push_back(row_line);
+		}
 	}
 
 
 }
 
+std::string JsonParse::join_keys(const std::vector<std::string>& keys) const
+{
+	std::string line;
+	for (const auto& key : keys)
+	{
+		line += key + ",";
+	}
+	if (!line.empty())
+	{
+		line.pop_back(); // removes trailing comma
+	}
+	return line;
+}
+
+std::string JsonParse::value_to_string(const nlohmann::json& value) const
+{
+	if (value.is_string())
+	{
+		return value.get<std::string>();
+	}
+	else if (value.is_null())
+	{
+		return "";
+	}
+	else
+	{
+		return value.dump();
+	}
+}
+
+std::string JsonParse::build_csv_row(const std::vector<std::string>& header_keys, const std::map<std::string, std::string>& main_values, const std::map<std::string, std::string>& data_values) const
+{
+	std::string row_line;
+	int key_count = 0;
+	for (const auto& key : header_keys)
+	{
+		if (main_values.count(key) && key_count <= main_values.size()) // Added the key_count check because if there are duplicate keys in the request and response, its set to take value of request first if this check is not in place.
+		{
+			row_line += main_values.at(key);
+		}
+		else if (data_values.count(key))
+		{
+			row_line += data_values.at(key);
+		}
+		else if (data_values.count(key) == 0)
+		{
+			row_line += main_values.at("warning");
+		}
+		row_line += ",";
+		++key_count;
+	}
+	if (!row_line.empty())
+	{
+		row_line.pop_back(); // Removes trailing comma
+	}
+	return row_line;
+}
+
 std::vector<std::string> JsonParse::get_vec()
 {
-	if (!m_csv_vec.empty())
-	{
-		return m_csv_vec;
-	}
 	return m_csv_vec;
 }
