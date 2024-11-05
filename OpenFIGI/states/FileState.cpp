@@ -65,7 +65,7 @@ std::string FileState::get_save_path()
 	ofn_save.lpstrFile = szFile;
 	//ofn_save.lpstrFile[0] = '\0'; // Set lpstrFile[0] to '\0' so that GetOpenFileName does not use the contents of szFile to initialize itself.
 	ofn_save.nMaxFile = sizeof(szFile);
-	ofn_save.lpstrFilter = L"Compatible Files (*.txt;*.csv;*.json)\0*.txt;*.csv;*.json\0Text Files (*.txt)\0*.txt\0CSV Files (*.csv)\0*.csv\0All Files (*.*)\0*.*\0";
+	ofn_save.lpstrFilter = L"Compatible Files (*.txt;*.csv;*.json)\0*.txt;*.csv;*.json\0CSV Files (*.csv)\0*.csv\0JSON Files (*.json)\0*.json\0Text Files (*.txt)\0*.txt\0All Files (*.*)\0*.*\0";
 	ofn_save.nFilterIndex = 1;
 	ofn_save.lpstrFileTitle = NULL;
 	ofn_save.nMaxFileTitle = 0;

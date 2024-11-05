@@ -145,7 +145,7 @@ std::string JsonParse::build_csv_row(const std::vector<std::string>& header_keys
 	int key_count = 0;
 	for (const auto& key : header_keys)
 	{
-		if (main_values.count(key) && key_count <= main_values.size()) // Added the key_count check because if there are duplicate keys in the request and response, its set to take value of request first if this check is not in place.
+		if (main_values.count(key) && key_count < main_values.size()) // Added the key_count check because if there are duplicate keys in the request and response, its set to take value of request first if this check is not in place.
 		{
 			row_line += main_values.at(key);
 		}
@@ -155,7 +155,7 @@ std::string JsonParse::build_csv_row(const std::vector<std::string>& header_keys
 		}
 		else if (data_values.count(key) == 0)
 		{
-			row_line += main_values.at("warning");
+			row_line += "No identifier found.";
 		}
 		row_line += ",";
 		++key_count;

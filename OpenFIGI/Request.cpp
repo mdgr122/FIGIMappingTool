@@ -148,6 +148,7 @@ void Request::GetIdentifiers()
 				std::cout << "Error " << r.status_code << " | " << r.text << std::endl;
 				return;
 			}
+			//std::cout << r.status_code << std::endl;
 			job_count++;
 
 			json responseJson = json::parse(r.text);
@@ -339,7 +340,13 @@ void Request::ParseResponse()
 		//elem["idValue"] = (m_AllRequestBody[counter]["idValue"]);
 		//elem["idType"] = (m_AllRequestBody[counter]["idType"]);
 		//counter++;
-
+				// Check if the current counter is within bounds for m_AllRequestBody
+		if (counter >= m_AllRequestBody.size())
+		{
+			// Log an error, throw an exception, or handle this case as necessary
+			std::cout << "Warning: m_AllRequestBody index out of range at ParseResponse()." << std::endl;
+			break; // Stop the loop to avoid out-of-range access
+		}
 		for (auto it = m_AllRequestBody[counter].begin(); it != m_AllRequestBody[counter].end(); ++it)
 		{
 			// Assign the value from m_AllRequestBody to the corresponding key in elem
