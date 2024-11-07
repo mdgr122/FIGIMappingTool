@@ -1,12 +1,14 @@
 #pragma once
 #include <iostream>
 #include <string>
+#include <sstream>
 #include <vector>
 #include <cpr/cpr.h>
 #include <json.hpp>
 #include <regex>
 #include <algorithm>
 #include <cctype>
+#include <cassert>
 #include "states/FileState.h"
 #include "utilities/Timer.h"
 
@@ -15,19 +17,11 @@ class FileState;
 class Request
 {
 public:
-	//Request(const std::vector<std::string>& identifiers);
 	Request(FileState& fileState);
 	~Request() = default;
 
-	//void GetIdentifiers(std::vector<std::string>& identifiers);
-	bool Validate_ISIN(std::string& identifier);
-	bool Validate_BB_UNIQUE(std::string& identifier);
-	bool Validate_SEDOL(std::string& identifier);
-	bool Validate_COMMON(std::string& identifier);
-	bool Validate_WERTPAPIER(std::string& identifier);
-	bool Validate_ID_BB_GLOBAL(std::string& identifier);
-	bool Validate_TICKER(std::string& identifier);
-	bool Validate_CUSIP(std::string& identifier);
+	std::string validate_base_identifier(const std::string& identifier);
+	std::string validate_context_identifier(const std::string& context_identifier);
 	
 	bool isAllLetters(const std::string& str) {
 		return std::all_of(str.begin(), str.end(), [](unsigned char c) { return std::isalpha(c); });
@@ -49,7 +43,8 @@ public:
 	};
 
 
-	std::vector<std::pair<std::string, IdentifierType>> GetIdentifierType();
+	//std::vector<std::pair<std::string, IdentifierType>> GetIdentifierType();
+	std::vector<std::pair<std::string, std::string>> GetIdentifierType();
 	void GetVec();	
 	void GetIdentifiers();
 
@@ -70,14 +65,13 @@ private:
 
 	FileState& m_fileState;
 	std::vector<std::string> m_Identifiers;
-	std::vector<std::pair<std::string, Request::IdentifierType>> m_IdentifierPairs;
+	std::vector<std::pair<std::string, std::string>> m_IdentifierPairs;
 
 
 	IdentifierType m_IdentifierType;
 	nlohmann::json m_sResponse;
 	nlohmann::json m_RequestBody;
 	nlohmann::json m_AllRequestBody;
-	//HWND hwnd;
 
 
 

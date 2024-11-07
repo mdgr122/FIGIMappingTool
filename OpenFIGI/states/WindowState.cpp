@@ -3,9 +3,9 @@
 #include <string>
 
 // Define the window class name and window title at the top for consistency
-const wchar_t CLASS_NAME[] = L"OpenFIGILookup";
+const wchar_t CLASS_NAME[] = L"OpenFIGI API Tool";
 const wchar_t ABOUT_CLASS_NAME[] = L"AboutPopupWinudow";
-const wchar_t WINDOW_TITLE[] = L"OpenFIGI Lookup";
+const wchar_t WINDOW_TITLE[] = L"OpenFIGI API Tool";
 
 WindowState::WindowState(HWND hParent, FileState& fileState, Request& request, JsonParse& jsonParse) 
     : m_hwndParent(hParent)
@@ -109,7 +109,7 @@ WindowState::~WindowState()
 
 PCWSTR WindowState::ClassName() const
 {
-    return L"OpenFIGILookup";
+    return L"OpenFIGI API Tool";
 }
 
 LRESULT WindowState::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -315,7 +315,7 @@ BOOL WindowState::CreateParentWindow()
 {
 
     // Create the main (parent) window with the specified styles
-    if (!Create(L"OpenFIGILookup", WS_OVERLAPPEDWINDOW & ~WS_THICKFRAME & ~WS_MAXIMIZEBOX))
+    if (!Create(L"OpenFIGI API Tool", WS_OVERLAPPEDWINDOW & ~WS_THICKFRAME & ~WS_MAXIMIZEBOX))
     {
         return FALSE; // If creation fails, return FALSE
     }
@@ -386,19 +386,17 @@ BOOL WindowState::CreateAboutWindow()
     int centerY = parentRect.top + (PARENT_WINDOW_HEIGHT / 2);
 
     int childWidth = 400;
-    int childHeight = 200;
+    int childHeight = 140;
 
     int childX = centerX - (childWidth / 2);
     int childY = centerY - (childHeight / 2);
 
     const wchar_t* aboutText =
-        L"OpenFIGI API Tool\r\n"
-        L"Version: 0.4\r\n\r\n"
-        L"Description:\r\n"
-        L"A lightweight tool for retrieving OpenFIGI API mappings from various equity identifiers.\r\n\r\n"
-        L"Developed by: Michael Dakin-Green\r\n"
+        L"OpenFIGI API Tool 0.7 (64-bit)\r\n\r\n"
+        L"A lightweight tool for retrieving FIGI mappings from OpenFIGI using various equity identifiers.\r\n\r\n"
         L"License: MIT License\r\n"
-        L"Contact: michael.dakingreen@spglobal.com";
+        L"© 2024 by Michael Dakin-Green\r\n\r\n"
+        L"Contact: michael.dakingreen@spglobal.com\r\n";
 
 
 
@@ -419,7 +417,7 @@ BOOL WindowState::CreateAboutWindow()
         int childBtnY = -1;
 
         hwndCloseButton = CreateWindow(L"BUTTON", L"X", WS_CHILD | WS_VISIBLE | BS_FLAT | SS_CENTER, childBtnX, childBtnY, childBtnWidth, childBtnHeight, m_hwndAboutWindow, (HMENU)ID_BUTTON_CLOSE, GetModuleHandle(NULL), NULL);
-        hwndAboutText = CreateWindow(L"STATIC", aboutText, WS_CHILD | WS_VISIBLE | SS_CENTER, 1, 10, childWidth, childHeight - 40, m_hwndAboutWindow, (HMENU)ID_STATIC_ABOUT_MSG, GetModuleHandle(NULL), NULL);
+        hwndAboutText = CreateWindow(L"STATIC", aboutText, WS_CHILD | WS_VISIBLE | SS_LEFT, 2, 10, childWidth-2, childHeight - 20, m_hwndAboutWindow, (HMENU)ID_STATIC_ABOUT_MSG, GetModuleHandle(NULL), NULL);
 
 
         SendMessage(hwndAboutText, WM_SETFONT, (WPARAM)hFontAboutText, TRUE);
@@ -457,6 +455,8 @@ void WindowState::make_request()
     request.GetVec();
     request.GetIdentifierType();
     request.GetIdentifiers(); // Where the actual request is made
+
+    //request.GetIdentifierType_Testing();
 }
 
 void WindowState::save_output()

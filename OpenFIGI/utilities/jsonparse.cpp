@@ -43,12 +43,14 @@ void JsonParse::read_json(const nlohmann::json &response)
 		}
 	}
 
-
-
 	for (const auto& [key, value] : first_obj.items())
 	{
 		// Collecting keys of objects of first object in the parent array, if key is not "data"
-		if (key != "data" && key != "warning")
+		//if (key != "data" && key != "warning" && key != "micCode" && key != "exchCode" && key != "currency")
+		//{
+		//	header_keys.push_back(key);
+		//}
+		if (key == "idType" || key == "idValue")
 		{
 			header_keys.push_back(key);
 		}

@@ -2,10 +2,6 @@
 
 using namespace nlohmann;
 
-//Request::Request()
-//{
-//}
-
 Request::Request(FileState& fileState)
 	: m_fileState(fileState)
 	, r{}
@@ -18,19 +14,21 @@ Request::Request(FileState& fileState)
 
 }
 
+void Request::GetVec()
+{
+	m_Identifiers = m_fileState.GetVec();
+}
+
 // A vector of pairs, where each pair contains a string identifier (T1) and an identifierType (T2).
 // A pair is a specific case of a std::tulipe with two elements.
 // If neither T1 nor T2 is a possibly cv-qualified class type with non-trivial destructor, or array thereof, the destructor of pair is trivial.
 void Request::GetIdentifiers()
-{
-	std::string idType;
-	std::string exch_code;
-
-	
+{	
 	size_t counter = 0;
 	size_t job_count = 0;
 	
 	json jsonBody;
+	json jsonBody_request;
 	json requestBody = json::array();
 
 	//json jsonArray;
@@ -44,94 +42,105 @@ void Request::GetIdentifiers()
 	for (auto& elem : m_IdentifierPairs)
 	{
 		counter++;
-		std::string test = elem.first;
-		switch (elem.second)
+		
+		std::string& idValue = elem.first;
+		std::string& id_context_value = elem.second;
+
+
+		std::string idType = validate_base_identifier(idValue);
+		std::string id_context_type = validate_context_identifier(id_context_value);
+
+
+		if (!id_context_type.empty())
 		{
-		case Request::IdentifierType::ID_ISIN:
-			idType = "ID_ISIN";
-			break;
-		case Request::IdentifierType::TICKER:
-			idType = "TICKER";
-			break;
-		case Request::IdentifierType::ID_CUSIP:
-			idType = "ID_CUSIP";
-			break;
-		case Request::IdentifierType::ID_BB_GLOBAL:
-			idType = "ID_BB_GLOBAL";
-			break;
-		case Request::IdentifierType::ID_SEDOL:
-			idType = "ID_SEDOL";
-			break;
-		case Request::IdentifierType::NONE:
-			idType = "NONE";
-			break;
-		default:
-				break;
+			if (idType == "TICKER")
+			{
+				process_ticker(idValue);
+				jsonBody =
+				{
+					{"idType", idType},
+					{"idValue", idValue},
+					{id_context_type, id_context_value},
+					{"includeUnlistedEquities", true}
+				};
+				//requestBody.push_back(jsonBody); // Pushes back jsonBody to requestBody json array used in the actual post request.
+			}
+			else if (idType != "NONE")
+			{
+				jsonBody =
+				{
+					{"idType", idType},
+					{"idValue", idValue},
+					{id_context_type, id_context_value},
+					{"includeUnlistedEquities", true}
+				};
+				//requestBody.push_back(jsonBody); // Pushes back jsonBody to requestBody json array used in the actual post request.
+			}
+
+			jsonBody_request =
+			{
+				{"idType", idType},
+				{"idValue", idValue},
+				{id_context_type, id_context_value},
+				{"includeUnlistedEquities", true}
+			};
+			requestBody.push_back(jsonBody); // Pushes back jsonBody to requestBody json array used in the actual post request.
+			m_AllRequestBody.push_back(jsonBody_request);
 		}
-		//if (idType == "ID_ISIN")
-		//{
-		//	// Temporarily removing to allow all results
-		//	//exch_code = ((elem.first.substr(0, 2)) == "US") ? "US" : "";
-		//	exch_code = "";
-		//	
-		//	if (!exch_code.empty())
-		//	{
-		//		jsonBody =
-		//		{
-		//			{"idType", idType},
-		//			{"idValue", elem.first},
-		//			{"exchCode", exch_code},
-		//			{"includeUnlistedEquities", true},
-		//		};
-		//	}
-		//	else 
-		//	{
-		//		jsonBody =
-		//		{
-		//			{"idType", idType},
-		//			{"idValue", elem.first},
-		//			{"includeUnlistedEquities", true},
-		//		};
-		//	}
-		//	requestBody.push_back(jsonBody);
-		//	m_AllRequestBody.push_back(jsonBody);
-		//}
-		if (idType == "TICKER")
+		else
 		{
-			std::string idValue = elem.first;
-			process_ticker(idValue);
-			jsonBody =
+			if (idType == "TICKER")
+			{
+				process_ticker(idValue);
+				jsonBody =
+				{
+					{"idType", idType},
+					{"idValue", idValue},
+					{"includeUnlistedEquities", true}
+				};
+
+
+				//requestBody.push_back(jsonBody); // Pushes back jsonBody to requestBody json array used in the actual post request.
+			}
+			else if (idType != "NONE")
+			{
+				jsonBody =
+				{
+					{"idType", idType},
+					{"idValue", idValue},
+					{"includeUnlistedEquities", true}
+				};
+
+				//requestBody.push_back(jsonBody); // Pushes back jsonBody to requestBody json array used in the actual post request.
+			}
+
+			jsonBody_request =
 			{
 				{"idType", idType},
 				{"idValue", idValue},
 				{"includeUnlistedEquities", true}
 			};
-			requestBody.push_back(jsonBody);
-			m_AllRequestBody.push_back(jsonBody);
-		}
-		else if(idType != "NONE")
-		{
-			jsonBody = 
-			{
-				{"idType", idType},
-				{"idValue", elem.first},
-				{"includeUnlistedEquities", true}
-			};
-			requestBody.push_back(jsonBody);
-			m_AllRequestBody.push_back(jsonBody);
+			requestBody.push_back(jsonBody); // Pushes back jsonBody to requestBody json array used in the actual post request.
+			m_AllRequestBody.push_back(jsonBody_request);
 		}
 
 
-		while (job_count >= 26 && timer.ElapsedSec() <= 6 && api_cooldown == true)
+
+		if (job_count >= 26 && timer.ElapsedSec() <= 6)
 		{
-			if (timer.ElapsedSec() > 6)
+			api_cooldown = true;
+			while (api_cooldown)
 			{
-				job_count = 0;
-				timer.Stop();
-				timer.Start();
-				api_cooldown = false;
+				if (timer.ElapsedSec() > 6)
+				{
+					job_count = 0;
+					timer.Stop();
+					timer.Start();
+					api_cooldown = false;
+				}
 			}
 		}
+
 
 		if (requestBody.size() == 100 || (m_IdentifierPairs.size() - counter) == 0)
 		{
@@ -148,7 +157,6 @@ void Request::GetIdentifiers()
 				std::cout << "Error " << r.status_code << " | " << r.text << std::endl;
 				return;
 			}
-			//std::cout << r.status_code << std::endl;
 			job_count++;
 
 			json responseJson = json::parse(r.text);
@@ -161,124 +169,75 @@ void Request::GetIdentifiers()
 }
 
 
-bool Request::Validate_ISIN(std::string& identifier)
+std::string Request::validate_base_identifier(const std::string& identifier)
 {
-	// ISIN REGEX
-	const std::regex pattern("^(?!BBG)[A-Z]{2}[A-Z0-9]{9}[0-9]$");
-	if (identifier.empty())
-		return false;
+	std::string idType = "";
 
-	if (std::regex_match(identifier, pattern))
+	const std::regex ticker_pattern("([A-Za-z]{1,5})([-./]?[A-Za-z]{1,2})?");
+	const std::regex isin_pattern("^(?!BBG)[A-Z]{2}[A-Z0-9]{9}[0-9]$");
+	const std::regex sedol_pattern("^[0-9B-DF-HJ-NP-TV-Z]{6}[0-9]$");
+	const std::regex cusip_pattern("^[0-9]{3}[0-9a-zA-Z]{5}[0-9]");
+	const std::regex wkn_pattern("^[A-HJ-NP-Z0-9]{6}$");
+	const std::regex figi_pattern("^BBG[0-9A-Z]{9}$");
+
+	if (!identifier.empty())
 	{
-		return true;
+		if (std::regex_match(identifier, isin_pattern))
+		{
+			idType = "ID_ISIN";
+		}
+		else if (std::regex_match(identifier, sedol_pattern))
+		{
+			idType = "ID_SEDOL";
+		}
+		else if (std::regex_match(identifier, cusip_pattern))
+		{
+			idType = "ID_CUSIP";
+		}
+		else if (std::regex_match(identifier, ticker_pattern))
+		{
+			idType = "TICKER";
+		}
+		else if (std::regex_match(identifier, figi_pattern))
+		{
+			idType = "ID_BB_GLOBAL";
+		}
+		else if (std::regex_match(identifier, wkn_pattern))
+		{
+			idType = "ID_WERTPAPIER";
+		}
+		else
+		{
+			idType = "NONE";
+		}
+		return idType;
 	}
+
+	return idType;
+}
+
+std::string Request::validate_context_identifier(const std::string& context_identifier)
+{
+	std::string context_property = "";
 	
-	return false;
-}
-
-bool Request::Validate_BB_UNIQUE(std::string& identifier)
-{
-	// BB_UNIQUE REGEX
-	const std::regex pattern("^BBG[0-9A-Z]{9}$");
-	if (identifier.empty())
-		return false;
-
-	if (std::regex_match(identifier, pattern))
+	if (context_identifier.length() == 2)
 	{
-		return true;
+		context_property = "exchCode";
 	}
-
-	return false;
-}
-
-bool Request::Validate_SEDOL(std::string& identifier)
-{
-	// SEDOL REGEX
-	const std::regex pattern("^[0-9A-Z]{7}$");
-	if (identifier.empty())
-		return false;
-
-	if (std::regex_match(identifier, pattern))
+	else if (context_identifier.length() == 3)
 	{
-		return true;
+		context_property = "currency";
 	}
-
-	return false;
-}
-
-bool Request::Validate_COMMON(std::string& identifier)
-{
-	// COMMON REGEX
-	const std::regex pattern("^[A-Z0-9]+$");
-	if (identifier.empty())
-		return false;
-
-	if (std::regex_match(identifier, pattern))
+	else if (context_identifier.length() == 4)
 	{
-		return true;
+		context_property = "micCode";
 	}
-
-	return false;
-}
-
-bool Request::Validate_WERTPAPIER(std::string& identifier)
-{
-	// WERTPAPIER REGEX
-	const std::regex pattern("^[0-9A-Z]{6}$");
-	if (identifier.empty())
-		return false;
-
-	if (std::regex_match(identifier, pattern))
+	else
 	{
-		return true;
+		context_property = "";
 	}
+	return context_property;
 
-	return false;
-}
-
-bool Request::Validate_ID_BB_GLOBAL(std::string& identifier)
-{
-	// COMPOSITE_ID_BB_GLOBAL REGEX
-	const std::regex pattern("^BBG[0-9A-Z]{9}$");
-	if (identifier.empty())
-		return false;
-
-	if (std::regex_match(identifier, pattern))
-	{
-		return true;
-	}
-
-	return false;
-}
-
-bool Request::Validate_TICKER(std::string& identifier)
-{
-	//const std::regex pattern("([A-Za-z]{1,5})(-[A-Za-z]{1,2})?");
-	const std::regex pattern("([A-Za-z]{1,5})([-./]?[A-Za-z]{1,2})?");
-
-	if (identifier.empty())
-		return false;
-
-	if (std::regex_match(identifier, pattern))
-	{
-		return true;
-	}
-	return false;
-}
-
-bool Request::Validate_CUSIP(std::string& identifier)
-{
-	// CUSIP REGEX
-	const std::regex pattern("^[0-9A-Z]{9}$");
-	if (identifier.empty())
-		return false;
-
-	if (std::regex_match(identifier, pattern))
-	{
-		return true;
-	}
-
-	return false;
 }
 
 void Request::process_ticker(std::string& str)
@@ -301,11 +260,6 @@ void Request::process_ticker(std::string& str)
 			str.replace(dotPos, charsAfterDot + 1, "-" + str.substr(afterDot, 1));
 		}
 	}
-}
-
-void Request::GetVec()
-{
-	m_Identifiers = m_fileState.GetVec();
 }
 
 nlohmann::json Request::GetResponse()
@@ -371,43 +325,22 @@ void Request::set_apikey(std::wstring api_key)
 	m_apikey = Utils::GetInstance().wideToStr(api_key);
 }
 
-std::vector<std::pair<std::string, Request::IdentifierType>> Request::GetIdentifierType()
+
+std::vector<std::pair<std::string, std::string>> Request::GetIdentifierType()
 {
-	for (auto& elem : m_Identifiers)
+
+
+	// Looping through each element in the input_vector, which is each row.
+	for (auto elem : m_Identifiers)
 	{
-		IdentifierType type = IdentifierType::NONE;
-		std::string sType = "";
+		std::istringstream iss(elem);
 
-		if (Validate_ISIN(elem))
-		{
-			type = IdentifierType::ID_ISIN;
-			sType = "ID_ISIN";
-		}
-		else if (Validate_TICKER(elem))
-		{
-			type = IdentifierType::TICKER;
-			sType = "TICKER";
-		}
-		else if (Validate_CUSIP(elem))
-		{
-			type = IdentifierType::ID_CUSIP;
-			sType = "CUSIP";
-		}
-		else if (Validate_ID_BB_GLOBAL(elem))
-		{
-			type = IdentifierType::ID_BB_GLOBAL;
-			sType = "FIGI";
-		}
-		else if (Validate_SEDOL(elem))
-		{
-			type = IdentifierType::ID_SEDOL;
-			sType = "SEDOL";
-		}
+		std::string base_identifier = "";
+		std::string contextual_identifier = "";
 
-		m_IdentifierPairs.push_back(make_pair(elem, type));
-
+		iss >> base_identifier >> contextual_identifier;
+		m_IdentifierPairs.push_back(make_pair(base_identifier, contextual_identifier));
 	}
+
 	return m_IdentifierPairs;
 }
-
-
