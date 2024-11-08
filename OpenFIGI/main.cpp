@@ -20,11 +20,11 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
     
     WindowState win(hwnd, fileState, request, jsonParse);
 
-    if (AllocConsole()) {
-        FILE* file;
-        freopen_s(&file, "CONOUT$", "w", stdout);
-        std::cout << "Console logging initialized.\n";
-    }
+    //if (AllocConsole()) {
+    //    FILE* file;
+    //    freopen_s(&file, "CONOUT$", "w", stdout);
+    //    std::cout << "Console logging initialized.\n";
+    //}
   
     if (!win.CreateParentWindow())
     {
@@ -42,6 +42,6 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 
 
 
-    FreeConsole();
+    //FreeConsole();
     return 0;
 }
