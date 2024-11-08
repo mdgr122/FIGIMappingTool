@@ -7,9 +7,11 @@ Request::Request(FileState& fileState)
 	, r{}
 	, m_IdentifierPairs{}
 	, m_IdentifierType{ IdentifierType::NONE }
-	, m_sResponse{json::array()}
-	, m_RequestBody{json::array()}
-	, m_AllRequestBody{}
+	, m_response{ json::array() }
+	, m_bad_response{ json::array() }
+	, m_current_request_valid{ json::array() }
+	, m_all_requests_valid{}
+	, m_combined{json::array()}
 {
 
 }
@@ -28,11 +30,7 @@ void Request::GetIdentifiers()
 	size_t job_count = 0;
 	
 	json jsonBody;
-	json jsonBody_request;
-	json requestBody = json::array();
 
-	//json jsonArray;
-	json badResponse = json::array({"warning", "No identifier found."});
 
 	Timer timer;
 	timer.Start(); // begin the timer
@@ -45,85 +43,60 @@ void Request::GetIdentifiers()
 		
 		std::string& idValue = elem.first;
 		std::string& id_context_value = elem.second;
-
-
 		std::string idType = validate_base_identifier(idValue);
 		std::string id_context_type = validate_context_identifier(id_context_value);
 
 
-		if (!id_context_type.empty())
-		{
-			if (idType == "TICKER")
-			{
-				process_ticker(idValue);
-				jsonBody =
-				{
-					{"idType", idType},
-					{"idValue", idValue},
-					{id_context_type, id_context_value},
-					{"includeUnlistedEquities", true}
-				};
-				//requestBody.push_back(jsonBody); // Pushes back jsonBody to requestBody json array used in the actual post request.
-			}
-			else if (idType != "NONE")
-			{
-				jsonBody =
-				{
-					{"idType", idType},
-					{"idValue", idValue},
-					{id_context_type, id_context_value},
-					{"includeUnlistedEquities", true}
-				};
-				//requestBody.push_back(jsonBody); // Pushes back jsonBody to requestBody json array used in the actual post request.
-			}
 
-			jsonBody_request =
+		if (idType != "NONE")
+		{
+			if (!id_context_type.empty())
 			{
-				{"idType", idType},
-				{"idValue", idValue},
-				{id_context_type, id_context_value},
-				{"includeUnlistedEquities", true}
-			};
-			requestBody.push_back(jsonBody); // Pushes back jsonBody to requestBody json array used in the actual post request.
-			m_AllRequestBody.push_back(jsonBody_request);
+				if (idType == "TICKER")
+				{
+					process_ticker(idValue);
+				}
+
+				jsonBody =
+				{
+					{"idType", idType},
+					{"idValue", idValue},
+					{id_context_type, id_context_value},
+					{"includeUnlistedEquities", true}
+				};
+
+			}
+			else
+			{
+				if (idType == "TICKER")
+				{
+					process_ticker(idValue);
+				}
+
+				jsonBody =
+				{
+					{"idType", idType},
+					{"idValue", idValue},
+					{"includeUnlistedEquities", true}
+				};
+
+			}
+			m_current_request_valid.push_back(jsonBody);
+			m_all_requests_valid.push_back(jsonBody);
 		}
 		else
 		{
-			if (idType == "TICKER")
-			{
-				process_ticker(idValue);
-				jsonBody =
-				{
-					{"idType", idType},
-					{"idValue", idValue},
-					{"includeUnlistedEquities", true}
-				};
-
-
-				//requestBody.push_back(jsonBody); // Pushes back jsonBody to requestBody json array used in the actual post request.
-			}
-			else if (idType != "NONE")
-			{
-				jsonBody =
-				{
-					{"idType", idType},
-					{"idValue", idValue},
-					{"includeUnlistedEquities", true}
-				};
-
-				//requestBody.push_back(jsonBody); // Pushes back jsonBody to requestBody json array used in the actual post request.
-			}
-
-			jsonBody_request =
+			jsonBody =
 			{
 				{"idType", idType},
 				{"idValue", idValue},
-				{"includeUnlistedEquities", true}
+				{ "warning", "Skipped - Invalid idType" },
 			};
-			requestBody.push_back(jsonBody); // Pushes back jsonBody to requestBody json array used in the actual post request.
-			m_AllRequestBody.push_back(jsonBody_request);
-		}
 
+
+			m_bad_response.push_back(jsonBody);
+
+		}
 
 
 		if (job_count >= 26 && timer.ElapsedSec() <= 6)
@@ -142,15 +115,16 @@ void Request::GetIdentifiers()
 		}
 
 
-		if (requestBody.size() == 100 || (m_IdentifierPairs.size() - counter) == 0)
+		if (m_current_request_valid.size() == 100 || (m_IdentifierPairs.size() - counter) == 0)
 		{
+
 			r = cpr::Post(
 				cpr::Url{ "https://api.openfigi.com/v3/mapping" },
 				cpr::Header{
 					{"Content-Type", "application/json"},
 					{"X-OPENFIGI-APIKEY", m_apikey}
 				},
-				cpr::Body{ requestBody.dump() }
+				cpr::Body{ m_current_request_valid.dump() }
 			);
 			if (r.status_code != 200)
 			{
@@ -159,12 +133,43 @@ void Request::GetIdentifiers()
 			}
 			job_count++;
 
-			json responseJson = json::parse(r.text);
-			m_sResponse.insert(m_sResponse.end(), responseJson.begin(), responseJson.end());
-			m_RequestBody.insert(m_RequestBody.end(), responseJson.begin(), responseJson.end());
-			requestBody.clear();
+			nlohmann::json responseJson = json::parse(r.text);
+
+			m_response.insert(m_response.end(), responseJson.begin(), responseJson.end());
+			m_current_request_valid.clear(); // Clears the current requests.
 
 		}
+	}
+
+
+}
+
+void Request::ParseResponse()
+{
+
+	size_t counter = 0;
+	m_combined.clear(); // Clear m_combined to ensure it's empty before storing new data
+	std::cout << "m_all_requests_valid.size(): " << m_all_requests_valid.size() << std::endl;
+	std::cout << "m_response.size(): " << m_response.size() << std::endl;
+
+	for (const auto& elem : m_response)
+	{
+		json updated_elem = elem;
+
+		for (auto it = m_all_requests_valid[counter].begin(); it != m_all_requests_valid[counter].end(); ++it)
+		{
+			if (it.key() != "includeUnlistedEquities")
+			{
+				updated_elem[it.key()] = it.value();
+			}
+		}
+		m_combined.push_back(updated_elem); // Store the modified element in m_combined
+		counter++;
+	}
+
+	for (const auto& elem_2 : m_bad_response)
+	{
+		m_combined.push_back(elem_2);
 	}
 }
 
@@ -264,10 +269,10 @@ void Request::process_ticker(std::string& str)
 
 nlohmann::json Request::GetResponse()
 {
-	if (!m_sResponse.empty())
+	if (!m_response.empty())
 	{
 		ParseResponse();
-		return m_sResponse;
+		return m_combined;
 	}
 	return nullptr;
 }
@@ -275,45 +280,13 @@ nlohmann::json Request::GetResponse()
 void Request::ClearResponse()
 {
 	//m_Identifiers.clear();
+	m_combined.clear();
 	m_IdentifierPairs.clear();
-	m_sResponse.clear();
-	m_RequestBody.clear();
-	m_AllRequestBody.clear();
+	m_response.clear();
+	m_current_request_valid.clear();
+	m_all_requests_valid.clear();
 }
 
-void Request::ParseResponse()
-{
-
-	size_t counter = 0;
-
-	auto& inner_json = m_sResponse;
-
-	for (auto& elem : inner_json)
-	{
-		////elem["exchCode"] = (m_AllRequestBody[counter]["exchCode"]);
-		//elem["idValue"] = (m_AllRequestBody[counter]["idValue"]);
-		//elem["idType"] = (m_AllRequestBody[counter]["idType"]);
-		//counter++;
-				// Check if the current counter is within bounds for m_AllRequestBody
-		if (counter >= m_AllRequestBody.size())
-		{
-			// Log an error, throw an exception, or handle this case as necessary
-			//std::cout << "Warning: m_AllRequestBody index out of range at ParseResponse()." << std::endl;
-			break; // Stop the loop to avoid out-of-range access
-		}
-		for (auto it = m_AllRequestBody[counter].begin(); it != m_AllRequestBody[counter].end(); ++it)
-		{
-			// Assign the value from m_AllRequestBody to the corresponding key in elem
-			if (it.key() != "includeUnlistedEquities")
-			{
-				elem[it.key()] = it.value();
-			}
-			//elem[it.key()] = it.value();
-		}
-		counter++;
-	}
-
-}
 
 std::string const Request::get_apikey()
 {

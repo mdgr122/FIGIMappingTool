@@ -212,13 +212,11 @@ LRESULT WindowState::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
             }
             else if (LOWORD(wParam) == ID_EDIT_APIKEY)
             {
-                std::wcout << "Current API-KEY: " << m_apikey << std::endl;
                 wchar_t buffer[256];
                 GetWindowText(hEditControl, buffer, 256);
                 m_apikey = buffer;
 
                 request.set_apikey(m_apikey);
-                std::wcout << "Updated API-KEY: " << m_apikey << std::endl;
             }
             break;
         }

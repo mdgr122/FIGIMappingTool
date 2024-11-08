@@ -69,9 +69,15 @@ private:
 
 
 	IdentifierType m_IdentifierType;
-	nlohmann::json m_sResponse;
-	nlohmann::json m_RequestBody;
-	nlohmann::json m_AllRequestBody;
+
+	nlohmann::json m_current_request_valid;
+	nlohmann::json m_all_requests_valid;
+
+	nlohmann::json m_response;
+	nlohmann::json m_bad_response;
+
+	nlohmann::json m_combined;
+
 
 
 
