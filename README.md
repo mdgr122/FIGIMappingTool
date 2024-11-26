@@ -68,13 +68,15 @@ The input file should be a plain text file (`*.txt`) containing a list of identi
 > **Note**: When searching for an **index**, you must append `" Index"` to the index ticker. This is how the OpenFIGI API labels equity indices.
 
 #### Sample Input File (`input.txt`)
-AAPL XNGS 
-AAPL UW 
-CAR.UN 
-SPX Index 
-TSLA
-US0378331005
-US88160R1014 UN
+     ```txt
+     AAPL XNGS 
+    AAPL UW 
+    CAR.UN 
+    SPX Index 
+    TSLA
+    US0378331005
+    US88160R1014 UN
+     ```
 
 
 ### Running the Tool
