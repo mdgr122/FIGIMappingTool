@@ -12,7 +12,6 @@ A lightweight tool for mapping equity identifiers to FIGI codes in bulk using th
   - [Running the Tool](#running-the-tool)
   - [Output Formats](#output-formats)
 - [License](#license)
-- [Acknowledgements](#acknowledgements)
 
 ## Features
 
@@ -104,10 +103,6 @@ US88160R1014 UN
 
 This project is licensed under the [MIT License](LICENSE).
 
-## Acknowledgements
-
-- **OpenFIGI API**: For providing the essential mapping service.
-- **Contributors**: Thanks to everyone who has contributed to this project.
 
 ---
 
