@@ -1,6 +1,6 @@
-# OpenFIGI Bulk Mapping Tool
+# FIGI Mapping Tool
 
-A lightweight tool for mapping equity identifiers to FIGI codes in bulk using the [OpenFIGI API](https://www.openfigi.com/api). You can use your own OpenFIGI API key by replacing the default one at the bottom of the application window.
+A lightweight tool for mapping equity identifiers to FIGI codes in bulk using the [OpenFIGI API](https://www.openfigi.com/api). You can use your own API key by replacing the default one at the bottom of the application window.
 
 ## Table of Contents
 
@@ -12,27 +12,33 @@ A lightweight tool for mapping equity identifiers to FIGI codes in bulk using th
   - [Running the Tool](#running-the-tool)
   - [Output Formats](#output-formats)
 - [License](#license)
+- [Acknowledgements](#acknowledgements)
+- [Disclaimer](#disclaimer)
+- [Contributing](#contributing)
+- [Support](#support)
 
 ## Features
 
-- **Bulk Mapping**: Map large lists of equity identifiers to FIGI codes efficiently.
+- **Bulk Mapping**: Efficiently map large lists of equity identifiers to FIGI codes.
 - **Flexible Input**: Supports various base identifiers and optional context values.
-- **Multiple Output Formats**: Get results in Raw JSON, Raw Text, or Parsed CSV.
+- **Multiple Output Formats**: Obtain results in Raw JSON, Raw Text, or Parsed CSV.
 - **Customizable API Key**: Easily replace the default API key with your own for higher rate limits.
 
 ## Prerequisites
 
 - **Operating System**: Windows 7 or higher.
 - **Dependencies**: Ensure that you have the required libraries and dependencies installed if you're compiling from source.
+  - **Visual Studio**: Recommended for compiling the source code.
+  - **OpenFIGI API Key**: Obtain one [here](https://www.openfigi.com/api) (optional but recommended).
 
 ## Installation
 
-1. **Download the Latest Release**: Get the executable from the [releases page](https://github.com/mdgr122/OpenFIGI/releases).
+1. **Download the Latest Release**: Get the executable from the [releases page](https://github.com/mdgr122/FIGIMappingTool/releases).
 
 2. **Optional - Compile from Source**:
    - Clone the repository:
      ```bash
-     git clone https://github.com/mdgr122/OpenFIGI.git
+     git clone https://github.com/mdgr122/FIGIMappingTool.git
      ```
    - Open the solution file in Visual Studio.
    - Build the project to generate the executable.
@@ -101,9 +107,26 @@ US88160R1014 UN
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE).
+This project is licensed under the [Apache License 2.0](LICENSE).
 
+### OpenFIGI API License
+
+The OpenFIGI API is provided by Bloomberg Finance L.P. under the [Apache License 2.0](http://www.apache.org/licenses/LICENSE-2.0). By using this tool, you agree to comply with the OpenFIGI API [Terms of Use](https://www.openfigi.com/api#terms).
 
 ---
 
-*For any issues or feature requests, please open an issue on the [GitHub repository](https://github.com/mdgr122/OpenFIGI/issues).*
+*Please ensure that you have read and understood the OpenFIGI API terms and conditions. It is your responsibility to comply with all applicable licensing requirements.*
+
+## Acknowledgements
+
+- **OpenFIGI API**: This project utilizes the OpenFIGI API provided by Bloomberg Finance L.P.
+
+## Disclaimer
+
+This tool is an independent project and is not affiliated with, endorsed by, or associated with Bloomberg Finance L.P. or OpenFIGI. The use of the OpenFIGI API is subject to their [Terms of Use](https://www.openfigi.com/api#terms).
+
+## Support
+
+For any issues or feature requests, please open an issue on the [GitHub repository](https://github.com/mdgr122/FIGIMappingTool/issues).
+
+---
