@@ -1,6 +1,18 @@
 #include "WindowState.h"
 #include <iostream>
 #include <string>
+#include <commctrl.h>
+#include <shellapi.h>
+
+#pragma comment(lib, "comctl32.lib")
+#pragma comment(lib, "shell32.lib")
+#pragma comment(linker, "\"/manifestdependency:type='win32' "    \
+    "name='Microsoft.Windows.Common-Controls' "                  \
+    "version='6.0.0.0' "                                         \
+    "processorArchitecture='*' "                                 \
+    "publicKeyToken='6595b64144ccf1df' "                         \
+    "language='*'\"")
+
 
 // Define the window class name and window title at the top for consistency
 const wchar_t CLASS_NAME[] = L"OpenFIGI API Tool";
@@ -137,7 +149,8 @@ LRESULT WindowState::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
                 SetWindowText(hwndWaitingMsg, L"Save Path Empty!");
                 break;
             }
-            else if ((request.GetResponse()).empty())
+            //else if (request.GetResponse().empty())
+            else if (!request.PeakResponse())
             {
                 SetWindowText(hwndWaitingMsg, L"Nothing to Save");
                 break;
@@ -145,42 +158,28 @@ LRESULT WindowState::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
             else
             {
                 SetWindowText(hwndWaitingMsg, L"Saving...");
-                // Without this UpdateWindow function call, there is a delay from when SetWindowText is called with "Saving..."
-                // This is because SetWindowText is not drawn until the window is painted, which doesn't happen until later in the loop.
-                // Therefore, ven though SetWindowText looks to be before the if statement, actual painting occurs later.
+                    // There is a slight delay when it enters the else, because it's retrieving the request.GetResponse()
+                    // This is because SetWindowText is not drawn until the window is painted, which doesn't happen until later in the loop.
+                    // Therefore, ven though SetWindowText looks to be before the if statement, actual painting occurs later.
                 UpdateWindow(hwndWaitingMsg);
-                if (save_ftype_csv())
-                {
-                    save_output_csv();
-                }
-                else
-                {
-                    save_output();
-                }
-                SetWindowText(hwndWaitingMsg, L"File Saved!");
+                EnableWindow(hwndSaveButton, FALSE); // Disable the Save button
+
+                // Start the save operation on a new thread
+                StartSaveThread();
                 break;
             }
-            break;
         }
         else if (LOWORD(wParam) == ID_BUTTON_REQUEST)
         {
-            bool process_flag = true;
-
             if (m_open_path.empty())
             {
-                SetWindowText(hwndWaitingMsg, L"");
                 SetWindowText(hwndWaitingMsg, L"Input Path Empty!");
                 break;
             }
-            while (process_flag)
-            {
-                SetWindowText(hwndWaitingMsg, L"Processing...");
-                make_request();
-                process_flag = false;
-                break;
-            }
-            SetWindowText(hwndWaitingMsg, L"");
-            SetWindowText(hwndWaitingMsg, L"Complete!");
+            EnableWindow(hwndRequestButton, FALSE);
+            SetWindowText(hwndWaitingMsg, L"Processing...");
+            UpdateWindow(hwndWaitingMsg);
+            StartMakeRequestThread();
             break;
         }
         else if (LOWORD(wParam) == ID_BUTTON_ABOUT)
@@ -222,6 +221,18 @@ LRESULT WindowState::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
         }
         break;
     }
+    case WM_MAKE_REQUEST_COMPLETE:
+    {
+        SetWindowText(hwndWaitingMsg, L"Complete!");
+        EnableWindow(hwndRequestButton, TRUE);
+        break;
+    }
+    case WM_SAVE_COMPLETE:
+    {
+        SetWindowText(hwndWaitingMsg, L"File Saved!");
+        EnableWindow(hwndSaveButton, TRUE); // Re-enable the Save button
+        break;
+    }
     case WM_ERASEBKGND:
         {
             HDC hdc = (HDC)wParam;
@@ -232,6 +243,22 @@ LRESULT WindowState::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 
             return 1; // Indicate that we've handled the message
         }
+    case WM_NOTIFY:
+    {
+        LPNMHDR pnmhdr = (LPNMHDR)lParam;
+        if (pnmhdr->idFrom == ID_STATIC_ABOUT_MSG &&
+            (pnmhdr->code == NM_CLICK || pnmhdr->code == NM_RETURN))
+        {
+            PNMLINK pNMLink = (PNMLINK)lParam;
+            const wchar_t* link = pNMLink->item.szUrl;
+
+            // Open the link in the default browser
+            ShellExecute(NULL, L"open", link, NULL, NULL, SW_SHOWNORMAL);
+
+            return 0;
+        }
+        break;
+    }
     case WM_APP_CHILD_CLOSED:
     {
         // Reset the unique_ptr as the child window is closed
@@ -322,7 +349,8 @@ BOOL WindowState::CreateParentWindow()
 
     int xPos = (nWidth - PARENT_WINDOW_WIDTH) / 2;
     int yPos = (nHeight - PARENT_WINDOW_HEIGHT) / 2;
-    DWORD default_btn_style = WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON;
+    DWORD default_btn_style = WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_PUSHBUTTON;
+    //DWORD default_btn_style = WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON;
 
     // Center the window on the screen
     SetWindowPos(m_hwnd, NULL, xPos, yPos, PARENT_WINDOW_WIDTH, PARENT_WINDOW_HEIGHT, SWP_NOZORDER | SWP_SHOWWINDOW);
@@ -364,6 +392,20 @@ BOOL WindowState::CreateParentWindow()
 
 }
 
+// Creates new thread upon make_request() to prevent window becoming unresponsive/freezing.
+void WindowState::StartMakeRequestThread()
+{
+    std::thread requestThread(&WindowState::make_request, this);
+    requestThread.detach();
+}
+
+// Creates new thread upon save_output() and save_output_csv to prevent window becoming unresponsive/freezing.
+void WindowState::StartSaveThread()
+{
+    std::thread saveThread(&WindowState::save_output_thread, this);
+    saveThread.detach();
+}
+
 BOOL WindowState::CreateAboutWindow()
 {
 
@@ -371,6 +413,11 @@ BOOL WindowState::CreateAboutWindow()
     {
         return TRUE;
     }
+    // Initialize common controls
+    INITCOMMONCONTROLSEX icex;
+    icex.dwSize = sizeof(icex);
+    icex.dwICC = ICC_STANDARD_CLASSES | ICC_LINK_CLASS;
+    InitCommonControlsEx(&icex);
 
     aboutWindow = std::make_unique<WindowState>(m_hwnd, fileState, request, jsonParse);
 
@@ -390,11 +437,11 @@ BOOL WindowState::CreateAboutWindow()
     int childY = centerY - (childHeight / 2);
 
     const wchar_t* aboutText =
-        L"OpenFIGI API Tool 0.8 (64-bit)\r\n\r\n"
+        L"OpenFIGI API Tool 0.9 (64-bit)\r\n\r\n"
         L"A lightweight tool for retrieving FIGI mappings from OpenFIGI using various equity identifiers.\r\n\r\n"
         L"License: MIT License\r\n"
-        L"© 2024 by Michael Dakin-Green\r\n\r\n"
-        L"Contact: michael.dakingreen@spglobal.com\r\n";
+        L"© 2024 by Michael Dakin-Green\r\n"
+        L"<A HREF=\"https://github.com/mdgr122/OpenFIGI\">GitHub Repository</A>";
 
 
 
@@ -414,8 +461,13 @@ BOOL WindowState::CreateAboutWindow()
         int childBtnX = childWidth - childBtnWidth;
         int childBtnY = -1;
 
-        hwndCloseButton = CreateWindow(L"BUTTON", L"X", WS_CHILD | WS_VISIBLE | BS_FLAT | SS_CENTER, childBtnX, childBtnY, childBtnWidth, childBtnHeight, m_hwndAboutWindow, (HMENU)ID_BUTTON_CLOSE, GetModuleHandle(NULL), NULL);
-        hwndAboutText = CreateWindow(L"STATIC", aboutText, WS_CHILD | WS_VISIBLE | SS_LEFT, 2, 10, childWidth-2, childHeight - 20, m_hwndAboutWindow, (HMENU)ID_STATIC_ABOUT_MSG, GetModuleHandle(NULL), NULL);
+        //DWORD close_btn_style = WS_CHILD | WS_VISIBLE | BS_FLAT | SS_CENTER | BS_PUSHBUTTON;
+        DWORD close_btn_style = WS_CHILD | WS_VISIBLE | BS_CENTER | BS_PUSHBUTTON;
+
+        hwndCloseButton = CreateWindow(L"BUTTON", L"X", close_btn_style, childBtnX, childBtnY, childBtnWidth, childBtnHeight, m_hwndAboutWindow, (HMENU)ID_BUTTON_CLOSE, GetModuleHandle(NULL), NULL);
+
+        hwndAboutText = CreateWindow(WC_LINK, aboutText, WS_CHILD | WS_VISIBLE | SS_LEFT, 2, 10, childWidth-2, childHeight - 20, m_hwndAboutWindow, (HMENU)ID_STATIC_ABOUT_MSG, GetModuleHandle(NULL), NULL);
+        //hwndAboutText = CreateWindow(L"STATIC", aboutText, WS_CHILD | WS_VISIBLE | SS_LEFT, 2, 10, childWidth-2, childHeight - 20, m_hwndAboutWindow, (HMENU)ID_STATIC_ABOUT_MSG, GetModuleHandle(NULL), NULL);
 
 
         SendMessage(hwndAboutText, WM_SETFONT, (WPARAM)hFontAboutText, TRUE);
@@ -453,6 +505,7 @@ void WindowState::make_request()
     request.GetVec();
     request.GetIdentifierType();
     request.GetIdentifiers(); // Where the actual request is made
+    PostMessage(m_hwnd, WM_MAKE_REQUEST_COMPLETE, 0, 0);
 
     //request.GetIdentifierType_Testing();
 }
@@ -466,6 +519,21 @@ void WindowState::save_output_csv()
 {
     jsonParse.read_json(request.GetResponse());
     fileState.save_csv_file(jsonParse.get_vec(), m_save_path);
+}
+
+void WindowState::save_output_thread()
+{
+    if (save_ftype_csv())
+    {
+        save_output_csv();
+    }
+    else
+    {
+        save_output();
+    }
+
+    // Notify the main thread that saving is complete
+    PostMessage(m_hwnd, WM_SAVE_COMPLETE, 0, 0);
 }
 
 bool WindowState::save_ftype_csv()

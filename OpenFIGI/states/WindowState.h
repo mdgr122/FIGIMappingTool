@@ -4,6 +4,7 @@
 #include <Windows.h>
 #include <Windowsx.h>
 #include <commctrl.h>
+#include <shellapi.h>
 #include "FileState.h"
 #include "../Request.h"
 #include "../utilities/utils.h"
@@ -20,9 +21,11 @@
 #define ID_BUTTON_ABOUT 1008
 #define ID_BUTTON_CLOSE 1009
 #define ID_ABOUT_WINDOW 1010
-#define WM_APP_CHILD_CLOSED (WM_APP + 1)
 #define ID_STATIC_ABOUT_MSG 1011
 #define ID_EDIT_APIKEY 1012
+#define WM_APP_CHILD_CLOSED (WM_APP + 1)
+#define WM_MAKE_REQUEST_COMPLETE (WM_APP + 2)
+#define WM_SAVE_COMPLETE (WM_USER + 3)
 
 
 class FileState;
@@ -34,6 +37,8 @@ public:
 	WindowState(HWND hParent, FileState& fileState, Request& request, JsonParse& jsonParse);
 	~WindowState();
 
+	void StartMakeRequestThread();
+	void StartSaveThread();
 
 	PCWSTR  ClassName() const override;
 	LRESULT HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam) override;
@@ -53,6 +58,8 @@ public:
 	void make_request();
 	void save_output();
 	void save_output_csv();
+
+	void save_output_thread();
 
 
 	bool save_ftype_csv();

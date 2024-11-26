@@ -30,6 +30,7 @@ add_executable (
 	"OpenFIGI/states/WindowState.h"
 	"OpenFIGI/states/WindowState.cpp"
 	"OpenFIGI/states/BaseWindow.h"
+    "OpenFIGI/OpenFIGI.rc"
 )
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
@@ -39,7 +40,7 @@ endif()
 # Set the executable as a Windows GUI application
 set_target_properties(OpenFIGI PROPERTIES WIN32_EXECUTABLE TRUE)
 
-# Add the tinyxml2 library
+# Add the json_lib library
 add_library(json_lib INTERFACE)
 
 # Specify the include directories for tinyxml2
@@ -48,8 +49,11 @@ target_include_directories(json_lib INTERFACE
 )
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/OpenFIGI/libs/cpr")
 
-# TODO: Add tests and install targets if needed.
+# Link against comctl32 library
+target_link_libraries(OpenFIGI PRIVATE comctl32)
+
+# Add the libraries to the target
 target_link_libraries(OpenFIGI PRIVATE json_lib)
 target_link_libraries(OpenFIGI PRIVATE cpr::cpr)
 
-
+# TODO: Add tests and install targets if needed.

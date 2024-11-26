@@ -48,6 +48,7 @@ public:
 	void GetVec();	
 	void GetIdentifiers();
 
+	bool PeakResponse();
 	nlohmann::json GetResponse();
 	void ClearResponse();
 	void ParseResponse();

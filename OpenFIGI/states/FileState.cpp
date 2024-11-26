@@ -169,7 +169,10 @@ const HWND FileState::GetHWND() const
 	HWND handle;
 	handle = hwnd_ptr->GetHWND();
 	if (handle != nullptr)
+	{
 		return handle;
+	}
+	return nullptr;
 }
 
 const std::vector<std::string>& FileState::GetVec() const
