@@ -1,0 +1,3 @@
+// FIGIMappingTool.rc - Resource script to embed the application manifest
+
+1 RT_MANIFEST "FIGIMappingTool.manifest"

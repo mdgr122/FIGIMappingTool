@@ -15,9 +15,9 @@
 
 
 // Define the window class name and window title at the top for consistency
-const wchar_t CLASS_NAME[] = L"OpenFIGI API Tool";
+const wchar_t CLASS_NAME[] = L"FIGIMappingTool";
 const wchar_t ABOUT_CLASS_NAME[] = L"AboutPopupWinudow";
-const wchar_t WINDOW_TITLE[] = L"OpenFIGI API Tool";
+const wchar_t WINDOW_TITLE[] = L"FIGIMappingTool";
 
 WindowState::WindowState(HWND hParent, FileState& fileState, Request& request, JsonParse& jsonParse) 
     : m_hwndParent(hParent)
@@ -121,7 +121,7 @@ WindowState::~WindowState()
 
 PCWSTR WindowState::ClassName() const
 {
-    return L"OpenFIGI API Tool";
+    return L"FIGIMappingTool";
 }
 
 LRESULT WindowState::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -340,7 +340,7 @@ BOOL WindowState::CreateParentWindow()
 {
 
     // Create the main (parent) window with the specified styles
-    if (!Create(L"OpenFIGI API Tool", WS_OVERLAPPEDWINDOW & ~WS_THICKFRAME & ~WS_MAXIMIZEBOX))
+    if (!Create(L"FIGIMappingTool", WS_OVERLAPPEDWINDOW & ~WS_THICKFRAME & ~WS_MAXIMIZEBOX))
     {
         return FALSE; // If creation fails, return FALSE
     }
@@ -437,11 +437,11 @@ BOOL WindowState::CreateAboutWindow()
     int childY = centerY - (childHeight / 2);
 
     const wchar_t* aboutText =
-        L"OpenFIGI API Tool 0.9 (64-bit)\r\n\r\n"
-        L"A lightweight tool for retrieving FIGI mappings from OpenFIGI using various equity identifiers.\r\n\r\n"
+        L"FIGIMappingTool v0.9 (x64)\r\n\r\n"
+        L"A lightweight tool for retrieving FIGI mappings from OpenFIGI's API using various equity identifiers.\r\n\r\n"
         L"License: MIT License\r\n"
         L"© 2024 by Michael Dakin-Green\r\n"
-        L"<A HREF=\"https://github.com/mdgr122/OpenFIGI\">GitHub Repository</A>";
+        L"<A HREF=\"https://github.com/mdgr122/FIGIMappingTool\">GitHub Repository</A>";
 
 
 

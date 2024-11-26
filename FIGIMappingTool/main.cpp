@@ -1,4 +1,4 @@
-﻿// OpenFIGI.cpp : Defines the entry point for the application.
+﻿// FIGIMappingTool.cpp : Defines the entry point for the application.
 //
 
 #include <iostream>
