@@ -66,7 +66,7 @@ void Request::GetIdentifiers()
 		std::string idType = validate_base_identifier(idValue);
 		std::string id_context_type = validate_context_identifier(id_context_value);
 
-		//std::cout << "{\"idValue\": " << idValue << ", \"idType\": " << idType << ", \"idContext\": " << id_context_value << "}" << std::endl;
+		std::cout << "{\"idValue\": " << idValue << ", \"idType\": " << idType << ", \"idContext\": " << id_context_value << "}" << std::endl;
 
 
 
@@ -141,12 +141,12 @@ void Request::GetIdentifiers()
 
 		if (m_current_request_valid.size() == 100 || (m_IdentifierPairs.size() - counter) == 0)
 		{
-
+			std::cout << m_current_request_valid << std::endl;
 			r = cpr::Post(
-				cpr::Url{ "https://api.FIGIMappingTool.com/v3/mapping" },
+				cpr::Url{ "https://api.openfigi.com/v3/mapping" },
 				cpr::Header{
 					{"Content-Type", "application/json"},
-					{"X-FIGIMappingTool-APIKEY", m_apikey}
+					{"X-OPENFIGI-APIKEY", m_apikey}
 				},
 				cpr::Body{ m_current_request_valid.dump() }
 			);

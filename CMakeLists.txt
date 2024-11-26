@@ -30,7 +30,7 @@ add_executable (
 	"FIGIMappingTool/states/WindowState.h"
 	"FIGIMappingTool/states/WindowState.cpp"
 	"FIGIMappingTool/states/BaseWindow.h"
-    "FIGIMappingTool/FIGIMappingTool.rc"
+    "FIGIMappingTool/FIGIMappingTool.rc"  # Include the resource file here
 )
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
