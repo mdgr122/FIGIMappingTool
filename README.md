@@ -14,7 +14,6 @@ A lightweight tool for mapping equity identifiers to FIGI codes in bulk using th
 - [License](#license)
 - [Acknowledgements](#acknowledgements)
 - [Disclaimer](#disclaimer)
-- [Contributing](#contributing)
 - [Support](#support)
 
 ## Features
