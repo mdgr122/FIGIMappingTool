@@ -40,8 +40,6 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
         DispatchMessage(&msg);
     }
 
-
-
     //FreeConsole();
     return 0;
 }

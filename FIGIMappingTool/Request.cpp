@@ -66,7 +66,7 @@ void Request::GetIdentifiers()
 		std::string idType = validate_base_identifier(idValue);
 		std::string id_context_type = validate_context_identifier(id_context_value);
 
-		std::cout << "{\"idValue\": " << idValue << ", \"idType\": " << idType << ", \"idContext\": " << id_context_value << "}" << std::endl;
+		//std::cout << "{\"idValue\": " << idValue << ", \"idType\": " << idType << ", \"idContext\": " << id_context_value << "}" << std::endl;
 
 
 
@@ -141,7 +141,7 @@ void Request::GetIdentifiers()
 
 		if (m_current_request_valid.size() == 100 || (m_IdentifierPairs.size() - counter) == 0)
 		{
-			std::cout << m_current_request_valid << std::endl;
+			//std::cout << m_current_request_valid << std::endl;
 			r = cpr::Post(
 				cpr::Url{ "https://api.openfigi.com/v3/mapping" },
 				cpr::Header{
@@ -172,8 +172,6 @@ void Request::ParseResponse()
 {
 	size_t counter = 0;
 	m_combined.clear(); // Clear m_combined to ensure it's empty before storing new data
-	//std::cout << "m_all_requests_valid.size(): " << m_all_requests_valid.size() << std::endl;
-	//std::cout << "m_response.size(): " << m_response.size() << std::endl;
 
 	for (const auto& elem : m_response)
 	{
@@ -194,6 +192,7 @@ void Request::ParseResponse()
 	{
 		m_combined.push_back(elem_2);
 	}
+
 }
 
 
@@ -317,7 +316,7 @@ void Request::process_ticker(std::string& str)
 
 bool Request::PeakResponse()
 {
-	if (!m_response.empty())
+	if (!m_response.empty() || !m_bad_response.empty())
 	{
 		return true;
 	}
@@ -326,7 +325,7 @@ bool Request::PeakResponse()
 
 nlohmann::json Request::GetResponse()
 {
-	if (!m_response.empty())
+	if (!m_response.empty() || !m_bad_response.empty())
 	{
 		ParseResponse();
 		return m_combined;
@@ -337,6 +336,7 @@ nlohmann::json Request::GetResponse()
 void Request::ClearResponse()
 {
 	//m_Identifiers.clear();
+	m_bad_response.clear();
 	m_combined.clear();
 	m_IdentifierPairs.clear();
 	m_response.clear();

@@ -437,7 +437,7 @@ BOOL WindowState::CreateAboutWindow()
     int childY = centerY - (childHeight / 2);
 
     const wchar_t* aboutText =
-        L"FIGIMappingTool v1.0 (x64)\r\n\r\n"
+        L"FIGIMappingTool v1.1 (x64)\r\n\r\n"
         L"A lightweight tool for retrieving FIGI mappings from OpenFIGI's API using various equity identifiers.\r\n\r\n"
         L"License: MIT License\r\n"
         L"© 2024 by Michael Dakin-Green\r\n"
