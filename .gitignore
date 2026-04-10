@@ -88,6 +88,8 @@ FIGIMappingTool/core/Request.h
 FIGIMappingTool/core/Request.cpp
 FIGIMappingTool/utilities/Timer.h
 FIGIMappingTool/utilities/Timer.cpp
+FIGIMappingTool/utilities/jsonparse.h
+FIGIMappingTool/utilities/jsonparse.cpp
 
 # ===================================================================
 # Project-specific NOT ignores

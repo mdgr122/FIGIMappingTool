@@ -1,64 +1,66 @@
 #include "FileState.h"
+#include <fstream>
+#include <string>
 #include "../utilities/Utils.h"
 
 std::string FileState::get_open_path()
 {
-    OPENFILENAME ofn{};
+    OPENFILENAME ofn{ };
     ZeroMemory(&ofn, sizeof(ofn));
-    ofn.lStructSize    = sizeof(ofn);
-    ofn.hwndOwner      = nullptr;
-    ofn.lpstrFile      = m_szFile;
-    ofn.lpstrFile[0]   = L'\0';
-    ofn.nMaxFile       = sizeof(m_szFile) / sizeof(m_szFile[0]);
-    ofn.lpstrFilter    = L"Text Files (*.txt)\0*.txt\0All Files (*.*)\0*.*\0";
-    ofn.nFilterIndex   = 1;
+    ofn.lStructSize = sizeof(ofn);
+    ofn.hwndOwner = nullptr;
+    ofn.lpstrFile = m_szFile;
+    ofn.lpstrFile[0] = L'\0';
+    ofn.nMaxFile = sizeof(m_szFile) / sizeof(m_szFile[0]);
+    ofn.lpstrFilter = L"Input Files (*.txt;*.csv)\0*.txt;*.csv\0Text Files (*.txt)\0*.txt\0CSV Files "
+        L"(*.csv)\0*.csv\0All Files (*.*)\0*.*\0";
+    ofn.nFilterIndex = 1;
     ofn.lpstrFileTitle = nullptr;
-    ofn.nMaxFileTitle  = 0;
-    ofn.lpstrInitialDir= nullptr;
-    ofn.Flags          = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
+    ofn.nMaxFileTitle = 0;
+    ofn.lpstrInitialDir = nullptr;
+    ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
 
     if (GetOpenFileName(&ofn) == TRUE)
     {
         return Utils::wide_to_str(m_szFile);
     }
-    return {};
+    return { };
 }
 
 std::string FileState::get_save_path()
 {
-    OPENFILENAME ofn{};
+    OPENFILENAME ofn{ };
     ZeroMemory(&ofn, sizeof(ofn));
 
     std::wstring placeholder = L"response.csv";
     wcsncpy_s(m_szFile, placeholder.c_str(), placeholder.size() + 1);
 
-    ofn.lStructSize    = sizeof(ofn);
-    ofn.hwndOwner      = nullptr;
-    ofn.lpstrFile      = m_szFile;
-    ofn.nMaxFile       = sizeof(m_szFile) / sizeof(m_szFile[0]);
-    ofn.lpstrFilter    = L"Compatible Files (*.txt;*.csv;*.json)\0*.txt;*.csv;*.json\0"
-                         L"CSV Files (*.csv)\0*.csv\0"
-                         L"JSON Files (*.json)\0*.json\0"
-                         L"Text Files (*.txt)\0*.txt\0"
-                         L"All Files (*.*)\0*.*\0";
-    ofn.nFilterIndex   = 1;
+    ofn.lStructSize = sizeof(ofn);
+    ofn.hwndOwner = nullptr;
+    ofn.lpstrFile = m_szFile;
+    ofn.nMaxFile = sizeof(m_szFile) / sizeof(m_szFile[0]);
+    ofn.lpstrFilter = L"Compatible Files (*.txt;*.csv;*.json)\0*.txt;*.csv;*.json\0" L"CSV Files (*.csv)\0*.csv\0"
+        L"JSON Files (*.json)\0*.json\0" L"Text Files (*.txt)\0*.txt\0" L"All Files (*.*)\0*.*\0";
+    ofn.nFilterIndex = 1;
     ofn.lpstrFileTitle = nullptr;
-    ofn.nMaxFileTitle  = 0;
-    ofn.lpstrInitialDir= nullptr;
-    ofn.Flags          = OFN_PATHMUSTEXIST | OFN_OVERWRITEPROMPT;
+    ofn.nMaxFileTitle = 0;
+    ofn.lpstrInitialDir = nullptr;
+    ofn.Flags = OFN_PATHMUSTEXIST | OFN_OVERWRITEPROMPT;
 
     if (GetSaveFileName(&ofn) == TRUE)
     {
         return Utils::wide_to_str(m_szFile);
     }
-    return {};
+    return { };
 }
 
 void FileState::read_file(std::string_view file_path)
 {
-std::ifstream ifs{std::string{file_path}};
-    
-    if (!ifs.is_open()) return;
+    std::ifstream ifs{std::string{file_path}};
+    if (!ifs.is_open())
+    {
+        return;
+    }
 
     std::string line;
     while (std::getline(ifs, line))
@@ -75,10 +77,7 @@ std::ifstream ifs{std::string{file_path}};
     }
 }
 
-void FileState::clear_data()
-{
-    m_input_vec.clear();
-}
+void FileState::clear_data() { m_input_vec.clear(); }
 
 void FileState::save_text_file(std::string_view content, std::string_view save_path)
 {
