@@ -1,31 +1,18 @@
-﻿// FIGIMappingTool.cpp : Defines the entry point for the application.
-//
-
-#include <iostream>
+﻿#include <iostream>
 #include <Windows.h>
-#include "Request.h"
+#include "core/OpenFigiClient.h"
 #include "states/WindowState.h"
 #include "states/FileState.h"
-#include "utilities/jsonparse.h"
 
 
 int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ PWSTR pCmdLine, _In_ int nCmdShow)
 {
 
     FileState fileState;
-    Request request(fileState);
-    JsonParse jsonParse;
-    HWND hwnd = NULL;
-    
-    
-    WindowState win(hwnd, fileState, request, jsonParse);
+    figi::OpenFigiClient client;
 
-    //if (AllocConsole()) {
-    //    FILE* file;
-    //    freopen_s(&file, "CONOUT$", "w", stdout);
-    //    std::cout << "Console logging initialized.\n";
-    //}
-  
+    HWND hwnd = nullptr;
+    WindowState win(hwnd, fileState, &client);
     if (!win.CreateParentWindow())
     {
         return 0;
@@ -40,6 +27,5 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
         DispatchMessage(&msg);
     }
 
-    //FreeConsole();
     return 0;
 }

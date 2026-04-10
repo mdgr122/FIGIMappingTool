@@ -1,182 +1,94 @@
 #include "FileState.h"
-
-
-//FileState::FileState(HWND hwnd)
-FileState::FileState()
-	: hwnd(nullptr)
-	, hf(nullptr)
-	, m_open_path{}
-	, m_save_path{}
-	, m_input_vec{}
-	, ofn_open{}
-	, ofn_save{}
-{
-}
-
-FileState::~FileState()
-{
-}
-
+#include "../utilities/Utils.h"
 
 std::string FileState::get_open_path()
 {
-	ZeroMemory(&ofn_open, sizeof(ofn_open));
-	ofn_open.lStructSize = sizeof(ofn_open);
-	ofn_open.hwndOwner = hwnd;
-	ofn_open.lpstrFile = szFile;
-	ofn_open.lpstrFile[0] = '\0'; // Set lpstrFile[0] to '\0' so that GetOpenFileName does not use the contents of szFile to initialize itself.
-	ofn_open.nMaxFile = sizeof(szFile);
-	ofn_open.lpstrFilter = L"Text Files (*.txt)\0*.txt\0All Files (*.*)\0*.*\0";
-	ofn_open.nFilterIndex = 1;
-	ofn_open.lpstrFileTitle = NULL;
-	ofn_open.nMaxFileTitle = 0;
-	ofn_open.lpstrInitialDir = NULL;
-	ofn_open.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
+    OPENFILENAME ofn{};
+    ZeroMemory(&ofn, sizeof(ofn));
+    ofn.lStructSize    = sizeof(ofn);
+    ofn.hwndOwner      = nullptr;
+    ofn.lpstrFile      = m_szFile;
+    ofn.lpstrFile[0]   = L'\0';
+    ofn.nMaxFile       = sizeof(m_szFile) / sizeof(m_szFile[0]);
+    ofn.lpstrFilter    = L"Text Files (*.txt)\0*.txt\0All Files (*.*)\0*.*\0";
+    ofn.nFilterIndex   = 1;
+    ofn.lpstrFileTitle = nullptr;
+    ofn.nMaxFileTitle  = 0;
+    ofn.lpstrInitialDir= nullptr;
+    ofn.Flags          = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
 
-	// If user specifies filename and clicks OK, then return value is nonzero. The buffer pointed to by the lpstrFile member of the OPENFILENAME struct contains t he full path and file name specified.
-	if (GetOpenFileName(&ofn_open) == TRUE)
-	{
-		hf = CreateFile(
-			ofn_open.lpstrFile,
-			GENERIC_READ,
-			FILE_SHARE_READ | FILE_SHARE_WRITE, // 0,
-			(LPSECURITY_ATTRIBUTES)NULL,
-			OPEN_EXISTING,
-			FILE_ATTRIBUTE_NORMAL,
-			(HANDLE)NULL
-		);
-		m_open_path = Utils::GetInstance().wideToStr(szFile);
-		return m_open_path;
-	}
-	std::cerr << "Failed to retrieve FilePath" << std::endl;
-	return m_open_path;
+    if (GetOpenFileName(&ofn) == TRUE)
+    {
+        return Utils::wide_to_str(m_szFile);
+    }
+    return {};
 }
 
 std::string FileState::get_save_path()
 {
-	ZeroMemory(&ofn_save, sizeof(ofn_save));
-	ofn_save.lStructSize = sizeof(ofn_save);
-	ofn_save.hwndOwner = hwnd;
-	ofn_save.lpstrFile = szFile;
+    OPENFILENAME ofn{};
+    ZeroMemory(&ofn, sizeof(ofn));
 
-	std::wstring placeholder = L"response.csv";
-	wcsncpy_s(szFile, placeholder.c_str(), placeholder.size() + 1);
+    std::wstring placeholder = L"response.csv";
+    wcsncpy_s(m_szFile, placeholder.c_str(), placeholder.size() + 1);
 
-	ofn_save.lpstrFile = szFile;
-	//ofn_save.lpstrFile[0] = '\0'; // Set lpstrFile[0] to '\0' so that GetOpenFileName does not use the contents of szFile to initialize itself.
-	ofn_save.nMaxFile = sizeof(szFile);
-	ofn_save.lpstrFilter = L"Compatible Files (*.txt;*.csv;*.json)\0*.txt;*.csv;*.json\0CSV Files (*.csv)\0*.csv\0JSON Files (*.json)\0*.json\0Text Files (*.txt)\0*.txt\0All Files (*.*)\0*.*\0";
-	ofn_save.nFilterIndex = 1;
-	ofn_save.lpstrFileTitle = NULL;
-	ofn_save.nMaxFileTitle = 0;
-	ofn_save.lpstrInitialDir = NULL;
-	ofn_save.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
+    ofn.lStructSize    = sizeof(ofn);
+    ofn.hwndOwner      = nullptr;
+    ofn.lpstrFile      = m_szFile;
+    ofn.nMaxFile       = sizeof(m_szFile) / sizeof(m_szFile[0]);
+    ofn.lpstrFilter    = L"Compatible Files (*.txt;*.csv;*.json)\0*.txt;*.csv;*.json\0"
+                         L"CSV Files (*.csv)\0*.csv\0"
+                         L"JSON Files (*.json)\0*.json\0"
+                         L"Text Files (*.txt)\0*.txt\0"
+                         L"All Files (*.*)\0*.*\0";
+    ofn.nFilterIndex   = 1;
+    ofn.lpstrFileTitle = nullptr;
+    ofn.nMaxFileTitle  = 0;
+    ofn.lpstrInitialDir= nullptr;
+    ofn.Flags          = OFN_PATHMUSTEXIST | OFN_OVERWRITEPROMPT;
 
-	// If user specifies filename and clicks OK, then return value is nonzero. The buffer pointed to by the lpstrFile member of the OPENFILENAME struct contains t he full path and file name specified.
-	if (GetSaveFileName(&ofn_save) == TRUE)
-	{
-		hf = CreateFile(
-			ofn_save.lpstrFile,
-			GENERIC_READ,
-			FILE_SHARE_READ | FILE_SHARE_WRITE, // 0,
-			(LPSECURITY_ATTRIBUTES)NULL,
-			CREATE_ALWAYS,
-			FILE_ATTRIBUTE_NORMAL,
-			(HANDLE)NULL
-		);
-		m_save_path = Utils::GetInstance().wideToStr(szFile);
-		return m_save_path;
-	}
-	std::cerr << "Failed to retrieve FilePath" << std::endl;
-	return m_save_path;
+    if (GetSaveFileName(&ofn) == TRUE)
+    {
+        return Utils::wide_to_str(m_szFile);
+    }
+    return {};
 }
 
-void FileState::read_file(std::string file_path)
+void FileState::read_file(std::string_view file_path)
 {
-	if (file_path == m_open_path)
-	{
-		std::ifstream ifs(m_open_path);  // Open the file
+std::ifstream ifs{std::string{file_path}};
+    
+    if (!ifs.is_open()) return;
 
-		std::string line;
-
-		if (ifs.is_open())
-		{
-			while (std::getline(ifs, line))
-			{
-				m_input_vec.push_back(line);
-			}
-			ifs.close();
-		}
-		else {
-			std::cerr << "Unable to open file\n";
-		}
-	}
-	else
-	{
-		std::ifstream ifs(file_path);  // Open the file
-
-		std::string line;
-
-		if (ifs.is_open())
-		{
-			while (std::getline(ifs, line))
-			{
-				m_input_vec.push_back(line);
-			}
-			ifs.close();
-		}
-		else {
-			std::cerr << "Unable to open file\n";
-		}
-	}
-
-}
-
-void FileState::save_file(nlohmann::json response, std::string save_path)
-{
-	//std::string save_path = m_save_path;
-	std::ofstream ofs(save_path);
-
-	ofs << response.dump(4);
-
-}
-
-void FileState::save_csv_file(std::vector<std::string> vec, std::string save_path)
-{
-	std::ofstream ofs(save_path);
-
-	for (const auto& elem : vec)
-	{
-		ofs << elem << '\n';
-	}
+    std::string line;
+    while (std::getline(ifs, line))
+    {
+        // Strip trailing \r if present (Windows line endings).
+        if (!line.empty() && line.back() == '\r')
+        {
+            line.pop_back();
+        }
+        if (!line.empty())
+        {
+            m_input_vec.push_back(std::move(line));
+        }
+    }
 }
 
 void FileState::clear_data()
 {
-	m_input_vec.clear();
-	m_response.clear();
+    m_input_vec.clear();
 }
 
-std::string FileState::format_string(const std::string& open_path)
+void FileState::save_text_file(std::string_view content, std::string_view save_path)
 {
-	std::string newPath = open_path;
-	std::replace(newPath.begin(), newPath.end(), '\\', '/');
-	return newPath;
+    std::ofstream ofs{std::string{save_path}};
+    ofs.write(content.data(), static_cast<std::streamsize>(content.size()));
 }
 
-const HWND FileState::GetHWND() const
+void FileState::save_json_file(const nlohmann::json& json, std::string_view save_path)
 {
-	HWND handle;
-	handle = hwnd_ptr->GetHWND();
-	if (handle != nullptr)
-	{
-		return handle;
-	}
-	return nullptr;
+    std::ofstream ofs{std::string{save_path}};
+    std::string dumped = json.dump(4);
+    ofs.write(dumped.data(), static_cast<std::streamsize>(dumped.size()));
 }
-
-const std::vector<std::string>& FileState::GetVec() const
-{
-	return m_input_vec;
-}
-

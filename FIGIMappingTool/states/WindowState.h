@@ -6,14 +6,15 @@
 #include <commctrl.h>
 #include <shellapi.h>
 #include "FileState.h"
-#include "../Request.h"
-#include "../utilities/utils.h"
-#include "../utilities/jsonparse.h"
+#include "../core/OpenFigiClient.h"
+#include "../utilities/Utils.h"
 #include <memory>
+#include <mutex>
+#include <thread>
 
-#define ID_BUTTON_FILE_PATH 1001  // Button ID for "File" button
-#define ID_BUTTON_SAVE_PATH 1002  // Button ID for "Save" button
-#define ID_BUTTON_SAVE 1003  // Button ID for "Save" button
+#define ID_BUTTON_FILE_PATH 1001
+#define ID_BUTTON_SAVE_PATH 1002
+#define ID_BUTTON_SAVE 1003
 #define ID_BUTTON_REQUEST 1004
 #define ID_FILE_PATH 1005
 #define ID_SAVE_PATH 1006
@@ -25,86 +26,80 @@
 #define ID_EDIT_APIKEY 1012
 #define WM_APP_CHILD_CLOSED (WM_APP + 1)
 #define WM_MAKE_REQUEST_COMPLETE (WM_APP + 2)
+#define WM_MAKE_REQUEST_FAILED (WM_APP + 3)
 #define WM_SAVE_COMPLETE (WM_USER + 3)
 
-
 class FileState;
-class Request;
 
-class WindowState : public BaseWindow<WindowState>
-{
+class WindowState : public BaseWindow<WindowState> {
 public:
-	WindowState(HWND hParent, FileState& fileState, Request& request, JsonParse& jsonParse);
-	~WindowState();
+  WindowState(HWND hParent, FileState& fileState, figi::OpenFigiClient* client);
+  ~WindowState();
 
-	void StartMakeRequestThread();
-	void StartSaveThread();
+  PCWSTR ClassName() const override;
+  LRESULT HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam) override;
 
-	PCWSTR  ClassName() const override;
-	LRESULT HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam) override;
+  BOOL CreateParentWindow();
+  BOOL CreateAboutWindow();
 
-	BOOL CreateParentWindow();
-	BOOL CreateAboutWindow();
-
-
-
-	//static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
-	//static LRESULT CALLBACK AboutWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
-
-	//int RunMsgLoop();
-
-	void get_open_path();
-	void get_save_path();
-	void make_request();
-	void save_output();
-	void save_output_csv();
-
-	void save_output_thread();
-
-
-	bool save_ftype_csv();
-	int get_parent_middle_width(int parent_width, int child_width) { return (parent_width - child_width) / 2; }
-
-
-	HWND GetHWND() const { return m_hwndParent; };
-	std::unique_ptr<WindowState> aboutWindow;
+  HWND GetHWND() const { return m_hwndParent; }
+  std::unique_ptr<WindowState> aboutWindow;
 
 private:
-	HWND m_hwndParent;
-	HWND m_hwndAboutWindow;
+  void get_open_path();
+  void get_save_path();
+  void start_request_thread();
+  void start_save_thread();
+  void do_request();
+  void do_save();
 
-	HWND hwndFileButton;
-	HWND hwndRequestButton;
-	HWND hwndSaveButton;
-	HWND hwndSaveButton2;
-	HWND hwndFilePath;				// Handle for file path
-	HWND hwndSavePath;				// Handle for file path
-	HWND hwndWaitingMsg;
-	HWND hwndAboutButton;
-	HWND hwndAboutPopup;
-	HWND hwndAboutText;
-	HWND hwndCloseButton;
-	HWND m_hwndAPIKey;
+  // Parses input lines into MappingJob objects (replaces old Request::GetIdentifierType).
+  std::vector<figi::MappingJob> parse_input_lines(const std::vector<std::string>& lines);
+  // Ticker dot-notation fixup (carried over from original).
+  static void process_ticker(std::string& str);
 
-	HBRUSH m_hbrBackground;
-	HBRUSH hbrEditBackground;
-	HFONT hFontAboutButtonText;
-	HFONT hFontAboutText;
-	HFONT hFontSmall;
+  bool is_csv_save_path() const;
+  int center_x(int child_width) const { return (PARENT_WINDOW_WIDTH - child_width) / 2; }
 
-	std::wstring m_apikey;
+  // Thread safety: protects m_results and m_error_msg.
+  std::mutex m_results_mutex;
+  std::vector<figi::MappingResult> m_results;
+  std::string m_error_msg;
 
-	int PARENT_WINDOW_HEIGHT = 250;
-	int PARENT_WINDOW_WIDTH = 650;
+  // Worker threads (joined in destructor).
+  std::jthread m_request_thread;
+  std::jthread m_save_thread;
 
-	int nWidth;
-	int nHeight;
+  HWND m_hwndParent;
 
-	std::string m_open_path;
-	std::string m_save_path;
+  HWND hwndFileButton{};
+  HWND hwndRequestButton{};
+  HWND hwndSaveButton{};
+  HWND hwndSaveButton2{};
+  HWND hwndFilePath{};
+  HWND hwndSavePath{};
+  HWND hwndWaitingMsg{};
+  HWND hwndAboutButton{};
+  HWND hwndCloseButton{};
+  HWND hwndAboutText{};
+  HWND m_hwndAPIKey{};
+  HWND m_hwndAboutWindow{};
 
-	FileState& fileState;
-	Request& request;
-	JsonParse& jsonParse;
+  HBRUSH m_hbrBackground;
+  HBRUSH hbrEditBackground{};
+  HFONT hFontAboutButtonText{};
+  HFONT hFontAboutText{};
+  HFONT hFontSmall{};
 
+  int PARENT_WINDOW_HEIGHT = 250;
+  int PARENT_WINDOW_WIDTH = 650;
+  int nWidth{};
+  int nHeight{};
+
+  std::string m_open_path;
+  std::string m_save_path;
+  std::wstring m_apikey;
+
+  FileState& m_fileState;
+  figi::OpenFigiClient* m_client; // nullable (about window gets nullptr)
 };

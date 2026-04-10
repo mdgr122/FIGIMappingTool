@@ -3,54 +3,33 @@
 #include <Windows.h>
 #include <commdlg.h>
 #include <fstream>
-#include <iostream>
 #include <string>
+#include <string_view>
 #include <vector>
-#include <filesystem>
-#include <memory>
 #include <json.hpp>
-#include "WindowState.h"
-#include "../utilities/utils.h"
 
-
-class WindowState;
-
-class FileState
-{
+class FileState {
 public:
-	FileState();
-	~FileState();
+  FileState() = default;
+  ~FileState() = default;
 
-	std::string get_open_path();
-	std::string get_save_path();
+  // Non-copyable (owns dialog state).
+  FileState(const FileState&) = delete;
+  FileState& operator=(const FileState&) = delete;
 
-	void read_file(std::string file_path);
-	void save_file(nlohmann::json response, std::string save_path);
-	void save_csv_file(std::vector<std::string> vec, std::string save_path);
-	void clear_data();
+  std::string get_open_path();
+  std::string get_save_path();
 
-	std::string format_string(const std::string& open_path);
+  void read_file(std::string_view file_path);
+  void clear_data();
 
-	const HWND GetHWND() const;
+  // Save raw string content to a file (CSV or JSON text).
+  void save_text_file(std::string_view content, std::string_view save_path);
+  void save_json_file(const nlohmann::json& json, std::string_view save_path);
 
-	const std::vector<std::string>& GetVec() const;
-
-
-	OPENFILENAME ofn_open;
-	OPENFILENAME ofn_save;
+  [[nodiscard]] const std::vector<std::string>& get_lines() const { return m_input_vec; }
 
 private:
-	wchar_t szFile[260];       // buffer for file name
-	HWND hwnd;              // owner window
-	HANDLE hf;              // file handle
-
-	std::string m_open_path;
-	std::string m_save_path;
-
-	std::vector<std::string> m_input_vec;
-	nlohmann::json m_response;
-
-
-	std::shared_ptr<WindowState> hwnd_ptr;
-
+  wchar_t m_szFile[260]{};
+  std::vector<std::string> m_input_vec;
 };
