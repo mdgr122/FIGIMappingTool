@@ -573,7 +573,7 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 ### OpenFIGI API License
 
-The OpenFIGI API is provided by Bloomberg Finance L.P. under the [Apache License 2.0](http://www.apache.org/licenses/LICENSE-2.0). By using this tool, you agree to comply with the OpenFIGI API [Terms of Use](https://www.openfigi.com/api#terms) and [Terms of Service] (https://www.openfigi.com/docs/terms-of-service).
+The OpenFIGI API is provided by Bloomberg Finance L.P. under the [Apache License 2.0](http://www.apache.org/licenses/LICENSE-2.0). By using this tool, you agree to comply with the OpenFIGI API [Terms of Use](https://www.openfigi.com/api#terms) and [Terms of Service](https://www.openfigi.com/docs/terms-of-service).
 
 ---
 
