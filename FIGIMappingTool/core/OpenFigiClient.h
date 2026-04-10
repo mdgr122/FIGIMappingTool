@@ -1,7 +1,4 @@
 ﻿#pragma once
-// OpenFigiClient.h — C++23 OpenFIGI API client
-// Supports /v3/mapping, /v3/search, /v3/filter, /v3/mapping/values/:key
-// Thread-safe, rate-limit-aware, with proper error handling.
 
 #include <chrono>
 #include <cstdint>

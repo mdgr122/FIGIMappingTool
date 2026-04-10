@@ -40,7 +40,7 @@ inline std::wstring str_to_wide(const std::string& str)
         return { };
     }
     int count = MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, nullptr, 0);
-    std::wstring wstr(count - 1, L'\0'); // -1: MultiByteToWideChar includes null terminator
+    std::wstring wstr(count - 1, L'\0');
     MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, wstr.data(), count);
     return wstr;
 }

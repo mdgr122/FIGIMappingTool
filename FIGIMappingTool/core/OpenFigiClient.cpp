@@ -8,7 +8,6 @@ namespace figi
 {
 
 // ─── IdType string conversion ───────────────────────────────────────────────
-
 constexpr std::string_view to_string(IdType t) noexcept
 {
     switch (t)
@@ -449,7 +448,7 @@ OpenFigiClient::request_with_retry(std::function<Result<HttpResponse>()> do_requ
             return std::unexpected(std::move(err));
         }
 
-        // Exponential backoff, respect ratelimit-reset if available.
+        // Exponential backoff, respect rate limit-reset if available.
         auto wait = std::chrono::seconds(1 << attempt);
         if (resp.ratelimit_reset > 0)
         {
